@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 Antonio Alvarado Hernández <tnotstar@gmail.com>
+Copyright 2023, Antonio Alvarado Hernández <tnotstar@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// cfgFile is the configuration file path
 var cfgFile string
 
+// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "sqltoapi",
 	Short: "A SQL data fetcher & API caller tool",
-	Long: `As a SQL fetcher it connects to given database
-and fetch its data to one or more local JSONS file(s).
+	Long: `As a SQL fetcher it connects to given database and fetch
+its data to one or more local JSONS file(s).
 
 As an API end-point caller, it reads the JSONS file(s) and
 uploads its data to a given API server.`,
@@ -47,39 +49,38 @@ uploads its data to a given API server.`,
 	},
 }
 
+// init initializes the command line interface
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "",
 		"config file (default is `sqltoapi.yaml` at binary path)")
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sqltoapi.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
+// initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
 
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-
 	} else {
 		viper.SetConfigName("sqltoapi.yaml")
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal(err)
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		log.Printf("Using config file: " + viper.ConfigFileUsed())
 	}
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// Execute adds all child commands to the root command and sets flags
+// appropriately.
+//
+// This is called from main.main(). It only needs to happen once
+// to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
