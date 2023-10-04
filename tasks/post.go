@@ -20,25 +20,12 @@
 // THE SOFTWARE.
 //
 
-package cmd
+package tasks
 
 import (
-	"github.com/spf13/cobra"
-
-	"github.com/tnotstar/sqltoapi/tasks"
+	"log"
 )
 
-// postCmd represents the post command
-var postCmd = &cobra.Command{
-	Use:   "post",
-	Short: "Fetches query data from a SQL database",
-	Long: `This command execute a task to fetch data from a SQL database
-to store it in a local NDJSON file.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		tasks.ExecutePost(taskName)
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(postCmd)
+func ExecutePost(taskName string) {
+	log.Println("posting...", taskName)
 }

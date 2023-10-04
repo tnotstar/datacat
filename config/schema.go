@@ -20,25 +20,38 @@
 // THE SOFTWARE.
 //
 
-package cmd
+package config
 
-import (
-	"github.com/spf13/cobra"
+// Config represents the configuration of the application.
+type Config struct {
+	// A section for databases configurations.
+	Databases map[string]DatabaseConfig `mapstructure:"databases"`
 
-	"github.com/tnotstar/sqltoapi/tasks"
-)
-
-// postCmd represents the post command
-var postCmd = &cobra.Command{
-	Use:   "post",
-	Short: "Fetches query data from a SQL database",
-	Long: `This command execute a task to fetch data from a SQL database
-to store it in a local NDJSON file.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		tasks.ExecutePost(taskName)
-	},
+	// A section for tasks configurations.
+	Tasks struct {
+		// A subsection for fetch tasks configurations.
+		Fetch map[string]FetchConfig `mapstructure:"fetch"`
+	} `mapstructure:"tasks"`
 }
 
-func init() {
-	rootCmd.AddCommand(postCmd)
+// DatabaseConfig represents the configuration of a database.
+type DatabaseConfig struct {
+	// The database driver.
+	Driver string `mapstructure:"driver"`
+
+	// The database URI.
+	URI string `mapstructure:"uri"`
 }
+
+// FetchConfig represents the configuration of a fetch task.
+type FetchConfig struct {
+	// Specifies the source of the task.
+	Source struct {
+		// The name of the database to fetch data from.
+		Database string `mapstructure:"database"`
+
+		// The query to fetch data from the database.
+		Query string `mapstructure:"query"`
+	} `mapstructure:"source"`
+}
+

@@ -1,0 +1,38 @@
+#
+# this a sample configuration file for `sqltoapi`
+#
+
+databases:
+  db:
+    driver: oracle
+    uri: oracle://username:password@hostname:1521/sid
+
+tasks:
+  fetch:
+    all-people:
+      source:
+        database: db
+        query: >-
+          SELECT *
+            FROM people
+           WHERE ROWNUM < 100
+               ;
+      target:
+        type: file
+        format: ndjson
+        output: people-data.json
+
+    table-data:
+      source:
+        database: db
+        query: >-
+          SELECT schemaname AS schema
+               , tablename  AS table
+            FROM pg_catalog.pg_tables
+               ;
+      target:
+        type: file
+        format: ndjson
+        output: tables.json
+
+# EOF

@@ -20,25 +20,36 @@
 // THE SOFTWARE.
 //
 
-package cmd
+package config
 
 import (
-	"github.com/spf13/cobra"
+	"log"
 
-	"github.com/tnotstar/sqltoapi/tasks"
+	"github.com/spf13/viper"
 )
 
-// postCmd represents the post command
-var postCmd = &cobra.Command{
-	Use:   "post",
-	Short: "Fetches query data from a SQL database",
-	Long: `This command execute a task to fetch data from a SQL database
-to store it in a local NDJSON file.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		tasks.ExecutePost(taskName)
-	},
+// cfg is the configuration instance.
+var cfg Config
+
+// Initialize initializes the configuration.
+func Initialize(cfgfile string) {
+	viper.AddConfigPath(".")
+	viper.SetConfigType("yaml")
+	viper.SetConfigFile(cfgfile)
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("error reading config file: %s", err)
+	}
+
+	if err := viper.Unmarshal(&cfg); err != nil {
+		log.Fatalf("error unmarshalling config file: %s", err)
+	}
+
+	viper.AutomaticEnv()
 }
 
-func init() {
-	rootCmd.AddCommand(postCmd)
+// Get returns the configuration.
+func Get() Config {
+	return cfg
 }
+
