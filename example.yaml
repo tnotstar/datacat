@@ -14,7 +14,7 @@ tasks:
         database: db
         query: >-
           SELECT *
-            FROM people
+            FROM dual
            WHERE ROWNUM < 100
                ;
       target:

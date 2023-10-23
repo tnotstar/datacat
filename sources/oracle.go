@@ -20,45 +20,46 @@
 // THE SOFTWARE.
 //
 
-package tasks
+package sources
 
 import (
-	"encoding/json"
 	"log"
 
-	"github.com/tnotstar/sqltoapi/config"
-	"github.com/tnotstar/sqltoapi/sources"
+	"github.com/jmoiron/sqlx"
+
+	_ "github.com/sijms/go-ora/v2"
 )
 
-func ExecuteFetch(taskName string) {
-	log.Println("fetching...", taskName)
+func SourceOracleTo(out chan map[string]any, dbUri string, dbQuery string) {
+	defer close(out)
 
-	cfg := config.Get()
+	log.Println("starting oracle source...")
+	db, err := sqlx.Open("oracle", dbUri)
+	if err != nil {
+		log.Fatal("error opening connection to database: ", err)
+	}
+	defer db.Close()
 
-	task, ok := cfg.Tasks.Fetch[taskName]
-	if !ok {
-		log.Fatal("missing configuration for task name: ", taskName)
+	log.Println("fetching data from oracle source...")
+	rows, err := db.Queryx(dbQuery)
+	if err != nil {
+		log.Fatal("error executing query: ", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	length := len(columns)
+
+    counter := 0
+	for rows.Next() {
+	    results := make(map[string]any, length)
+        if err := rows.MapScan(results); err != nil {
+			log.Fatal("failed to scan row: ", err)
+		}
+        counter++
+        out <- results
 	}
 
-	dbName := task.Source.Database
-	db, ok := cfg.Databases[dbName]
-	if !ok {
-		log.Fatal("invalid database name: ", dbName)
-	}
-
-	if db.Driver != "oracle" {
-		log.Fatal("invalid driver for database: ", dbName)
-	}
-
-	ch := make(chan map[string]any)
-	dbUri := db.URI
-	dbQuery := task.Source.Query
-
-	go sources.SourceOracleTo(ch, dbUri, dbQuery)
-
-	for results := range ch {
-		data, _ := json.Marshal(results)
-		log.Printf("*> results: %v", string(data))
-	}
+    log.Printf("processed %d rows", counter)
 }
 
