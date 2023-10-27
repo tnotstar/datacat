@@ -30,6 +30,12 @@ import (
 	_ "github.com/sijms/go-ora/v2"
 )
 
+// SourceOracleTo reads data from an Oracle database and sends it to the
+// specified processing channel.
+//
+// The `dbUri` parameter is a string containing the database connection URI.
+// The `dbQuery` parameter is a string containing the query to be executed.
+//
 func SourceOracleTo(out chan map[string]any, dbUri string, dbQuery string) {
 	defer close(out)
 
@@ -50,14 +56,14 @@ func SourceOracleTo(out chan map[string]any, dbUri string, dbQuery string) {
 	columns, err := rows.Columns()
 	length := len(columns)
 
-    counter := 0
+	counter := 0
 	for rows.Next() {
-	    results := make(map[string]any, length)
-        if err := rows.MapScan(results); err != nil {
+		results := make(map[string]any, length)
+		if err := rows.MapScan(results); err != nil {
 			log.Fatal("failed to scan row: ", err)
 		}
-        counter++
-        out <- results
+		out <- results
+		counter++
 	}
 
     log.Printf("processed %d rows", counter)
