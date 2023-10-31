@@ -1,4 +1,3 @@
-//
 // Copyright 2023, Antonio Alvarado Hernández <tnotstar@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,35 +19,7 @@
 // THE SOFTWARE.
 //
 
-package config
+package core
 
-import (
-	"log"
-
-	"github.com/spf13/viper"
-)
-
-// cfg is the configuration instance.
-var cfg Config
-
-// Initialize initializes the configuration.
-func Initialize(cfgfile string) {
-	viper.AddConfigPath(".")
-	viper.SetConfigType("yaml")
-	viper.SetConfigFile(cfgfile)
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("error reading config file: %s", err)
-	}
-
-	if err := viper.Unmarshal(&cfg); err != nil {
-		log.Fatalf("error unmarshalling config file: %s", err)
-	}
-
-	viper.AutomaticEnv()
-}
-
-// Get returns the global configuration object.
-func Get() *Config {
-	return &cfg
-}
+// RowMap represents a row of data in a task.
+type RowMap map[string]any

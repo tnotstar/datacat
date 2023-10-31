@@ -1,4 +1,3 @@
-//
 // Copyright 2023, Antonio Alvarado Hernández <tnotstar@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,35 +19,53 @@
 // THE SOFTWARE.
 //
 
-package config
+package changers
 
 import (
-	"log"
+	"fmt"
+	"strings"
 
-	"github.com/spf13/viper"
+	"github.com/tnotstar/sqltoapi/core"
 )
 
-// cfg is the configuration instance.
-var cfg Config
+// CastToBoolean casts the given fields to boolean values.
+//
+// The `fields` is a list of fields to be casted.
+//
+// Returns the output channel of the casted rows.
+func CastToBoolean(in <-chan core.RowMap, fields []string) <-chan core.RowMap {
+	out := make(chan core.RowMap)
 
-// Initialize initializes the configuration.
-func Initialize(cfgfile string) {
-	viper.AddConfigPath(".")
-	viper.SetConfigType("yaml")
-	viper.SetConfigFile(cfgfile)
+	go func() {
+		for row := range in {
+			out <- castGivenFieldsToBoolean(row, fields)
+		}
+		close(out)
+	}()
 
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("error reading config file: %s", err)
-	}
-
-	if err := viper.Unmarshal(&cfg); err != nil {
-		log.Fatalf("error unmarshalling config file: %s", err)
-	}
-
-	viper.AutomaticEnv()
+	return out
 }
 
-// Get returns the global configuration object.
-func Get() *Config {
-	return &cfg
+// castGivenFieldsToBoolean casts given fields to boolean values.
+//
+// The `row` is the row to be casted.
+// The `fields` is a list of fields to be casted.
+//
+// Returns the modified row instance with fields casted.
+func castGivenFieldsToBoolean(row core.RowMap, fields []string) core.RowMap {
+	for _, field := range fields {
+		rawValue, ok := row[field]
+		if !ok {
+			continue
+		}
+
+		strValue := strings.ToLower(fmt.Sprint(rawValue))
+		if strValue == "1" || strValue == "yes" || strValue == "true" {
+			row[field] = true
+		} else {
+			row[field] = false
+		}
+	}
+
+	return row
 }
