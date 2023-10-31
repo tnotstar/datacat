@@ -84,8 +84,3 @@ func ExecuteFetch(taskName string) {
 
 	log.Println("all row fetched successfully")
 }
-
-// Add two numbers
-func Add(x float64, y float64) float64 {
-	return x + y
-}
