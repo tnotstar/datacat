@@ -17,30 +17,27 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
+package adapters
+
+import (
+	"log"
+
+	"github.com/tnotstar/sqltoapi/core"
+)
+
+// `BuildAdapter` creates a new instance of the adapter middlepoint specified
+// by the configuration object passed as argument.
 //
+// The `task` is the name of the task is being executed.
+// The `adcfg` is the configuration for the object to be created.
+func BuildAdapter(task string, adcfg core.AdapterConfig) core.Adapter {
+	switch adcfg.Type {
+	case "cast-to-boolean":
+		return NewCastToBooleanAdapter(task, adcfg.Fields)
+	default:
+		log.Fatal("Invalid adapter type: ", adcfg.Type)
+	}
 
-package core
-
-// A RowMap represents a row of data moving through a task.
-type RowMap map[string]any
-
-// A Source endpoint is a subtask which retrieves data from a specialized
-// type of data source.
-type Source interface {
-	// Run creates a `goroutine` to execute the retrieval procedure.
-	Run() <-chan RowMap
-}
-
-// An Adapter middlepoint is a subtask which applies a transformation
-// to a each row of data retrieved from the previous stage in a task.
-type Adapter interface {
-	// Run creates a `goroutine` to execute the adapter procedure.
-	Run(<-chan RowMap) <-chan RowMap
-}
-
-// A Target endpoint is a subtask which sends data to a specialized
-// type of data target.
-type Target interface {
-	// Run creates a `goroutine` to execute the sending procedure.
-	Run(<-chan RowMap)
+	return nil
 }

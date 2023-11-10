@@ -17,7 +17,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-//
 
 package sources
 
@@ -30,31 +29,56 @@ import (
 	_ "github.com/sijms/go-ora/v2"
 )
 
-// FromOracleQuery reads data from an Oracle database and sends it to the
-// specified processing channel.
+// `OracleSource` is the concrete implementation of the source interface
+// for Oracle databases. It reads data from an Oracle database and sends
+// it to the output processing channel.
+type OracleSource struct {
+	// The `task` of the task which is running into.
+	task string
+	// The `uri` is a string containing the connection URI.
+	uri string
+	// The `query` is a string containing the query to be executed.
+	query string
+}
+
+// `NewOracleSource` creates a new instance of the Oracle source endpoint.
 //
-// The `driver` parameter is a string cotaining the name of the database driver.
-// The `uri` parameter is a string containing the database connection URI.
-// The `query` parameter is a string containing the query to be executed.
-func FromOracleQuery(driver string, uri string, query string) <-chan core.RowMap {
+// The `task` is the name of the task is being executed.
+// The `uri` is a string containing the database connection URI.
+// The `query` is a string containing the query to be executed.
+func NewOracleSource(task string, uri string, query string) *OracleSource {
+	return &OracleSource{
+		task:  task,
+		uri:   uri,
+		query: query,
+	}
+}
+
+// This is the name of the Oracle database driver used.
+const OracleDriver = "oracle"
+
+// `Run` creates a goroutine that reads data from the database and sends
+// it to an output channel. It returns a channel that will receive the
+// data read from the database.
+func (src *OracleSource) Run() <-chan core.RowMap {
 	out := make(chan core.RowMap)
 
 	go func() {
-		log.Println("Opening a connection to the database")
-		db, err := sqlx.Open(driver, uri)
+		log.Printf("- Opening a connection to the database of task: %s", src.task)
+		db, err := sqlx.Open(OracleDriver, src.uri)
 		if err != nil {
 			log.Fatal("Error opening connection to database: ", err)
 		}
 		defer db.Close()
 
-		log.Println("Executing the database query")
-		rows, err := db.Queryx(query)
+		log.Printf("- Executing the database query: %s...", src.query[:24])
+		rows, err := db.Queryx(src.query)
 		if err != nil {
-			log.Fatal("Error executing query: ", err)
+			log.Fatal("Error trying to execute a query: ", err)
 		}
 		defer rows.Close()
 
-		log.Println("Fetch rows from the database")
+		log.Println("- Fetching rows from the database")
 		columns, _ := rows.Columns()
 		length := len(columns)
 		counter := 0
@@ -69,7 +93,7 @@ func FromOracleQuery(driver string, uri string, query string) <-chan core.RowMap
 		}
 
 		close(out)
-		log.Printf("Processed %d rows", counter)
+		log.Printf("- Closing output channel after processed %d rows", counter)
 	}()
 
 	return out

@@ -1,4 +1,3 @@
-//
 // Copyright 2023, Antonio Alvarado Hernández <tnotstar@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,37 +17,50 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-//
 
-package config
+package tasks
 
 import (
 	"log"
+	"sync"
 
-	"github.com/spf13/viper"
+	"github.com/tnotstar/sqltoapi/adapters"
+	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/sqltoapi/sources"
+	"github.com/tnotstar/sqltoapi/targets"
 )
 
-// cfg is the configuration instance.
-var cfg Config
+// ExecuteFetch executes the fetch task with given name.
+//
+// The `taskName` is the name of the task to be executed.
+func RunTask(taskName string) {
+	log.Printf("Running task %s...", taskName)
+	var prev, next <-chan core.RowMap
 
-// Initialize initializes the configuration.
-func Initialize(cfgfile string) {
-	viper.AddConfigPath(".")
-	viper.SetConfigType("yaml")
-	viper.SetConfigFile(cfgfile)
+	cfg := core.GetConfig()
+	scfg := cfg.GetSourceConfig(taskName)
+	tcfg := cfg.GetTargetConfig(taskName)
 
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("error reading config file: %s", err)
+	log.Printf("> Starting source of type \"%s\" on task \"%s\"...",
+		scfg.Type, taskName)
+	source := sources.BuildSource(taskName, scfg)
+	prev = source.Run()
+
+	next = prev
+	for _, acfg := range cfg.GetAdaptersConfig(taskName) {
+		log.Printf("> Starting adapter of type \"%s\" on task \"%s\"...",
+			acfg.Type, taskName)
+		adapter := adapters.BuildAdapter(taskName, acfg)
+		next = adapter.Run(prev)
 	}
 
-	if err := viper.Unmarshal(&cfg); err != nil {
-		log.Fatalf("error unmarshalling config file: %s", err)
-	}
+	var wg sync.WaitGroup
+	log.Printf("> Starting target of type \"%s\" on task \"%s\"...",
+		tcfg.Type, taskName)
+	wg.Add(1)
+	target := targets.BuildTarget(&wg, taskName, tcfg)
+	target.Run(next)
+	wg.Wait()
 
-	viper.AutomaticEnv()
-}
-
-// Get returns the global configuration object.
-func Get() *Config {
-	return &cfg
+	log.Printf("Task \"%s\" finished!", taskName)
 }

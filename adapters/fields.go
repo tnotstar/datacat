@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 //
 
-package changers
+package adapters
 
 import (
 	"fmt"
@@ -28,44 +28,52 @@ import (
 	"github.com/tnotstar/sqltoapi/core"
 )
 
-// CastToBoolean casts the given fields to boolean values.
+// `CastToBooleanAdapter` casts the given fields to boolean values.
+type CastToBooleanAdapter struct {
+	// The `task` of the task which is running into.
+	task string
+	// The `fields` to be casted.
+	fields []string
+}
+
+// `NewCastToBooleanAdapter` creates a new instance of the CastToBoolean adapter.
+//
+// The `task` is the name of the task to be executed.
+// The `fields` is an array with the names of the fields to be casted.
+func NewCastToBooleanAdapter(task string, fields []string) core.Adapter {
+
+	return &CastToBooleanAdapter{
+		task:   task,
+		fields: fields,
+	}
+}
+
+// CastToBoolean casts given row fields to boolean values.
 //
 // The `fields` is a list of fields to be casted.
 //
 // Returns the output channel of the casted rows.
-func CastToBoolean(in <-chan core.RowMap, fields []string) <-chan core.RowMap {
+func (adp *CastToBooleanAdapter) Run(in <-chan core.RowMap) <-chan core.RowMap {
 	out := make(chan core.RowMap)
 
 	go func() {
 		for row := range in {
-			out <- castGivenFieldsToBoolean(row, fields)
+			for _, field := range adp.fields {
+				rawValue, ok := row[field]
+				if !ok {
+					continue
+				}
+				strValue := strings.ToLower(fmt.Sprint(rawValue))
+				if strValue == "1" || strValue == "yes" || strValue == "true" {
+					row[field] = true
+				} else {
+					row[field] = false
+				}
+			}
+			out <- row
 		}
 		close(out)
 	}()
 
 	return out
-}
-
-// castGivenFieldsToBoolean casts given fields to boolean values.
-//
-// The `row` is the row to be casted.
-// The `fields` is a list of fields to be casted.
-//
-// Returns the modified row instance with fields casted.
-func castGivenFieldsToBoolean(row core.RowMap, fields []string) core.RowMap {
-	for _, field := range fields {
-		rawValue, ok := row[field]
-		if !ok {
-			continue
-		}
-
-		strValue := strings.ToLower(fmt.Sprint(rawValue))
-		if strValue == "1" || strValue == "yes" || strValue == "true" {
-			row[field] = true
-		} else {
-			row[field] = false
-		}
-	}
-
-	return row
 }
