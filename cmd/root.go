@@ -28,39 +28,38 @@ import (
 	"github.com/tnotstar/sqltoapi/core"
 )
 
-// cfgFile is the configuration file path
+// `cfgFile` is the configuration file path.
 var cfgFile string
 
-// taskName is the name of the task to execute
+// `taskName` is the name of the task to be executed.
 var taskName string
 
-// rootCmd represents the base command when called without any subcommands
+// `rootCmd` represents the base command line handler.
 var rootCmd = &cobra.Command{
-	Use:   "sqltoapi",
+	Use:   "sql2api",
 	Short: "A SQL data fetcher & API caller tool",
 	Long: `As a SQL fetcher it connects to given database and fetch
 its data to one or more local NDJSON file(s).
 
 As an API end-point caller, it reads the NDJSON file(s) and
 uploads its data to a given API server.`,
-
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		core.InitConfig(cfgFile)
 	},
 }
 
-// init initializes the command line interface
+// `init` initializes the `root` command line handler.
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config-file", "c", "sqltoapi.yaml",
-		"config file (default is `sqltoapi.yaml` at binary path)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config-file", "c", "sql2api.yaml",
+		"config file (default is `sql2api.yaml` at binary path)")
 
 	rootCmd.PersistentFlags().StringVarP(&taskName, "task-name", "t", "",
 		"the name of the task to be executed")
 }
 
-// Execute adds all child commands to the root command and sets flags
-// appropriately. This is called from main.main().
-func Execute() {
+// `ExecuteRoot` executes the `root` command and handles errors
+// appropriately. This function is called from `main.main()`.
+func ExecuteRoot() {
 	err := rootCmd.Execute()
 	if err != nil {
 		log.Fatal(err)

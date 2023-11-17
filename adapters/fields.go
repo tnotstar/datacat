@@ -17,13 +17,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-//
 
 package adapters
 
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/tnotstar/sqltoapi/core"
 )
@@ -32,19 +32,29 @@ import (
 type CastToBooleanAdapter struct {
 	// The `task` of the task which is running into.
 	task string
+	// The `index` of the adapter.
+	index int
 	// The `fields` to be casted.
 	fields []string
+}
+
+// `IsaCastToBooleanAdapter` returns true if given adapter type is
+// an CastToBoolean.
+func IsaCastToBooleanAdapter(sourceType string) bool {
+	return sourceType == "cast-to-boolean"
 }
 
 // `NewCastToBooleanAdapter` creates a new instance of the CastToBoolean adapter.
 //
 // The `task` is the name of the task to be executed.
 // The `fields` is an array with the names of the fields to be casted.
-func NewCastToBooleanAdapter(task string, fields []string) core.Adapter {
+func NewCastToBooleanAdapter(cfg core.Configurator, taskName string, adapterIndex int) core.Adapter {
+	adcfg := cfg.GetAdaptersConfig(taskName)[adapterIndex]
 
 	return &CastToBooleanAdapter{
-		task:   task,
-		fields: fields,
+		task:   taskName,
+		index:  adapterIndex,
+		fields: adcfg.Fields,
 	}
 }
 
@@ -53,10 +63,13 @@ func NewCastToBooleanAdapter(task string, fields []string) core.Adapter {
 // The `fields` is a list of fields to be casted.
 //
 // Returns the output channel of the casted rows.
-func (adp *CastToBooleanAdapter) Run(in <-chan core.RowMap) <-chan core.RowMap {
+func (adp *CastToBooleanAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
 	out := make(chan core.RowMap)
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		for row := range in {
 			for _, field := range adp.fields {
 				rawValue, ok := row[field]
@@ -72,6 +85,7 @@ func (adp *CastToBooleanAdapter) Run(in <-chan core.RowMap) <-chan core.RowMap {
 			}
 			out <- row
 		}
+
 		close(out)
 	}()
 

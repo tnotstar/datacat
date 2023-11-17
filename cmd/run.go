@@ -26,7 +26,7 @@ import (
 	"github.com/tnotstar/sqltoapi/tasks"
 )
 
-// runCmd represents the run task command
+// `runCmd` represents the `run` command line handler.
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run the task with given name",
@@ -37,6 +37,7 @@ make some optional transformation and sent it to a target endpoint.`,
 	},
 }
 
+// `init` initializes the `run` command line handler.
 func init() {
 	rootCmd.AddCommand(runCmd)
 }

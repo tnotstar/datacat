@@ -21,7 +21,10 @@
 package sources
 
 import (
+	"fmt"
 	"log"
+	"net/url"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/tnotstar/sqltoapi/core"
@@ -33,56 +36,73 @@ import (
 // for Oracle databases. It reads data from an Oracle database and sends
 // it to the output processing channel.
 type OracleSource struct {
-	// The `task` of the task which is running into.
+	// `task` is the name of the task which is running into.
 	task string
-	// The `uri` is a string containing the connection URI.
+	// `driver` is the name of the database driver to be used.
+	driver string
+	// `uri` is a string containing the connection URI.
 	uri string
-	// The `query` is a string containing the query to be executed.
+	// `query` is a string containing the query to be executed.
 	query string
 }
 
-// `NewOracleSource` creates a new instance of the Oracle source endpoint.
-//
-// The `task` is the name of the task is being executed.
-// The `uri` is a string containing the database connection URI.
-// The `query` is a string containing the query to be executed.
-func NewOracleSource(task string, uri string, query string) *OracleSource {
-	return &OracleSource{
-		task:  task,
-		uri:   uri,
-		query: query,
-	}
+// `IsaOracleSource` returns true if given source type is
+// an Oracle Query.
+func IsaOracleSource(sourceType string) bool {
+	return sourceType == "oracle-query"
 }
 
-// This is the name of the Oracle database driver used.
-const OracleDriver = "oracle"
+// `NewOracleSource` creates a new instance of the Oracle Source endpoint.
+//
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+func NewOracleSource(cfg core.Configurator, taskName string) core.Source {
+	srcfg := cfg.GetSourceConfig(taskName)
+	dbcfg := cfg.GetDatabaseConfig(srcfg.Database)
+
+	uri := &url.URL{
+		Scheme: "oracle",
+		User:   url.UserPassword(dbcfg.Username, dbcfg.Password),
+		Host:   fmt.Sprintf("%s:%d", dbcfg.Host, dbcfg.Port),
+		Path:   dbcfg.Service,
+	}
+
+	return &OracleSource{
+		task:   taskName,
+		driver: "oracle",
+		uri:    uri.String(),
+		query:  srcfg.Query,
+	}
+}
 
 // `Run` creates a goroutine that reads data from the database and sends
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
-func (src *OracleSource) Run() <-chan core.RowMap {
+func (src *OracleSource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
 	out := make(chan core.RowMap)
 
+	wg.Add(1)
 	go func() {
-		log.Printf("- Opening a connection to the database of task: %s", src.task)
-		db, err := sqlx.Open(OracleDriver, src.uri)
+		defer wg.Done()
+
+		log.Printf("Opening a connection to the database for task: %s", src.task)
+		db, err := sqlx.Open(src.driver, src.uri)
 		if err != nil {
 			log.Fatal("Error opening connection to database: ", err)
 		}
 		defer db.Close()
 
-		log.Printf("- Executing the database query: %s...", src.query[:24])
+		log.Printf("Executing the database query: %s...", src.query[:24])
 		rows, err := db.Queryx(src.query)
 		if err != nil {
 			log.Fatal("Error trying to execute a query: ", err)
 		}
 		defer rows.Close()
 
-		log.Println("- Fetching rows from the database")
+		log.Println("Fetching rows from the database")
 		columns, _ := rows.Columns()
 		length := len(columns)
 		counter := 0
-
 		for rows.Next() {
 			results := make(core.RowMap, length)
 			if err := rows.MapScan(results); err != nil {
@@ -93,7 +113,7 @@ func (src *OracleSource) Run() <-chan core.RowMap {
 		}
 
 		close(out)
-		log.Printf("- Closing output channel after processed %d rows", counter)
+		log.Printf("Closing output channel after processed %d rows", counter)
 	}()
 
 	return out

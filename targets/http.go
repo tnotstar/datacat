@@ -17,7 +17,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-//
 
 package targets
 
@@ -30,41 +29,48 @@ import (
 	"github.com/tnotstar/sqltoapi/core"
 )
 
-// `JSONLinesTarget` is the concrete implementation of the target interface
-// for JSONLines (or NDJSON) file generator. It reads data from a given
-// processing channel and write it to a file in NDJSON format.
-type JSONLinesTarget struct {
-	// The `wg` of the wait group to be used to sync all targets.
-	wg *sync.WaitGroup
+// `HttpTarget` is the concrete implementation of the target interface
+// for HTTP microservices endpoints. It reads data from a given
+// processing channel and send it to a given HTTP endpoint.
+type HttpTarget struct {
 	// The `task` of the task which is running into.
 	task string
-	// The `fileName` of the file to be created.
-	fileName string
+	// The `endpoint` to send data to.
+	endpoint string
 }
 
-// `NewJSONLinesTarget` creates a new instance of the JSONLines endpoint.
+// `IsaHttpTarget` returns true if given target type
+// is a HTTP.
+func IsaHttpTarget(sourceType string) bool {
+	return sourceType == "http-target"
+}
+
+// `NewJSONLinesTarget` creates a new instance of the JSONLines target endpoint.
 //
-// The `wg` is a pointer to the wait group to be used to sync all targets.
-// The `task` is the name of the task to be executed.
-// The `filename` is the name of the file to be created.
-func NewJSONLinesTarget(wg *sync.WaitGroup, task string, fileName string) *JSONLinesTarget {
-	return &JSONLinesTarget{
-		wg:       wg,
-		task:     task,
-		fileName: fileName,
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+func NewHttpTarget(cfg core.Configurator, taskName string) *HttpTarget {
+	tgcfg := cfg.GetTargetConfig(taskName)
+	return &HttpTarget{
+		task:     taskName,
+		endpoint: tgcfg.Output,
 	}
 }
 
 // `Run` creates a goroutine that reads data from the database and sends
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
-func (tgt *JSONLinesTarget) Run(in <-chan core.RowMap) {
-	log.Println("Starting JSONLines target")
+func (tgt *HttpTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
+	log.Printf("Starting HttpTarget target for task %s...", tgt.task)
+
+	wg.Add(1)
 	go func() {
-		log.Printf("Creating output file: %s\n", tgt.fileName)
-		writer, err := os.Create(tgt.fileName)
+		defer wg.Done()
+
+		log.Printf("Creating output file: %s\n", tgt.endpoint)
+		writer, err := os.Create(tgt.endpoint)
 		if err != nil {
-			log.Fatalf("Error creating file %s: %s", tgt.fileName, err.Error())
+			log.Fatalf("Error creating file %s: %s", tgt.endpoint, err.Error())
 		}
 		defer writer.Close()
 
@@ -84,7 +90,8 @@ func (tgt *JSONLinesTarget) Run(in <-chan core.RowMap) {
 			counter += 1
 		}
 
-		tgt.wg.Done()
-		log.Printf("Wrote %d row(s) to the output file\n", counter)
+		log.Printf("Wrote %d row(s) to the output file", counter)
 	}()
+
+	log.Printf("HttpTarget target for task %s started successfully", tgt.task)
 }

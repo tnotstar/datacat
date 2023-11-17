@@ -29,18 +29,19 @@ import (
 // `BuildSource` creates a new instance of the source endpoint specified
 // by the configuration object passed as argument.
 //
-// The `task` is the name of the task is being executed.
-// The `srcfg` is the configuration for the object to be created.
-func BuildSource(task string, srcfg core.SourceConfig) core.Source {
-	cfg := core.GetConfig()
-	dbcfg := cfg.GetDatabaseConfig(srcfg.Database)
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+func BuildSource(cfg core.Configurator, taskName string) core.Source {
+	srcfg := cfg.GetSourceConfig(taskName)
 
-	switch srcfg.Type {
-	case "oracle-query":
-		return NewOracleSource(task, dbcfg.URI, srcfg.Query)
-	default:
-		log.Fatal("Invalid source type: ", srcfg.Type)
+	if IsaOracleSource(srcfg.Type) {
+		return NewOracleSource(cfg, taskName)
 	}
 
+	if IsaJSONLSource(srcfg.Type) {
+		return NewJSONLSource(cfg, taskName)
+	}
+
+	log.Fatalf("Invalid source endpoint type %s", srcfg.Type)
 	return nil
 }

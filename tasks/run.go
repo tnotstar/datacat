@@ -35,32 +35,26 @@ import (
 // The `taskName` is the name of the task to be executed.
 func RunTask(taskName string) {
 	log.Printf("Running task %s...", taskName)
+	var wg sync.WaitGroup
 	var prev, next <-chan core.RowMap
 
 	cfg := core.GetConfig()
-	scfg := cfg.GetSourceConfig(taskName)
-	tcfg := cfg.GetTargetConfig(taskName)
 
-	log.Printf("> Starting source of type \"%s\" on task \"%s\"...",
-		scfg.Type, taskName)
-	source := sources.BuildSource(taskName, scfg)
-	prev = source.Run()
+	log.Printf("Starting source for task %s...", taskName)
+	source := sources.BuildSource(cfg, taskName)
+	prev = source.Run(&wg)
 
 	next = prev
-	for _, acfg := range cfg.GetAdaptersConfig(taskName) {
-		log.Printf("> Starting adapter of type \"%s\" on task \"%s\"...",
-			acfg.Type, taskName)
-		adapter := adapters.BuildAdapter(taskName, acfg)
-		next = adapter.Run(prev)
+	for idx := range cfg.GetAdaptersConfig(taskName) {
+		log.Printf("Starting adapter #%d for task %s...", idx, taskName)
+		adapter := adapters.BuildAdapter(cfg, taskName, idx)
+		next = adapter.Run(&wg, prev)
 	}
 
-	var wg sync.WaitGroup
-	log.Printf("> Starting target of type \"%s\" on task \"%s\"...",
-		tcfg.Type, taskName)
-	wg.Add(1)
-	target := targets.BuildTarget(&wg, taskName, tcfg)
-	target.Run(next)
-	wg.Wait()
+	log.Printf("Starting target for task %s...", taskName)
+	target := targets.BuildTarget(cfg, taskName)
+	target.Run(&wg, next)
 
+	wg.Wait()
 	log.Printf("Task \"%s\" finished!", taskName)
 }

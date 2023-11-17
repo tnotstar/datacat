@@ -22,16 +22,10 @@ package core
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
-
-type Configurer interface {
-	GetDatabaseConfig(databaseName string) DatabaseConfig
-	GetSourceConfig(taskName string) SourceConfig
-	GetAdaptersConfig(taskName string) []AdapterConfig
-	GetTargetConfig(taskName string) TargetConfig
-}
 
 // `Config` represents the configuration data for the whole application.
 type Config struct {
@@ -53,6 +47,16 @@ type Config struct {
 type DatabaseConfig struct {
 	// The database driver identifier.
 	Driver string `mapstructure:"driver"`
+	// The server host name.
+	Host string `mapstructure:"hostname"`
+	// The server port number.
+	Port int `mapstructure:"port"`
+	// The database servirce name.
+	Service string `mapstructure:"service"`
+	// The database user name.
+	Username string `mapstructure:"username"`
+	// The database user password.
+	Password string `mapstructure:"password"`
 	// The database conection URI.
 	URI string `mapstructure:"uri"`
 }
@@ -61,8 +65,8 @@ type DatabaseConfig struct {
 type SourceConfig struct {
 	// The type of source endpoint.
 	Type string `mapstructure:"type"`
-	// The name of the database to fetch data from.
-	Database string `mapstructure:"database"`
+	// // The name or pattern for the input from source.
+	Database string `mapstructure:"input"`
 	// The query to fetch data from the database.
 	Query string `mapstructure:"query"`
 }
@@ -79,9 +83,12 @@ type AdapterConfig struct {
 type TargetConfig struct {
 	// The type of source endpoint.
 	Type string `mapstructure:"type"`
-	// The name or pattern for the output writer.
+	// The name or pattern for the output to target.
 	Output string `mapstructure:"output"`
 }
+
+// `defaultEnvPrefix` is the default prefix for environment variables.
+const defaultEnvPrefix = "SQL2API"
 
 // `cfg` is the global configuration instance.
 var cfg Config
@@ -96,11 +103,13 @@ func InitConfig(cfgfile string) {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
+	viper.SetEnvPrefix(defaultEnvPrefix)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Error unmarshalling config file: %s", err)
 	}
-
-	viper.AutomaticEnv()
 }
 
 // `GetConfig` returns a pointer to the global configuration instance.

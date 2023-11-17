@@ -29,15 +29,16 @@ import (
 // `BuildAdapter` creates a new instance of the adapter middlepoint specified
 // by the configuration object passed as argument.
 //
-// The `task` is the name of the task is being executed.
-// The `adcfg` is the configuration for the object to be created.
-func BuildAdapter(task string, adcfg core.AdapterConfig) core.Adapter {
-	switch adcfg.Type {
-	case "cast-to-boolean":
-		return NewCastToBooleanAdapter(task, adcfg.Fields)
-	default:
-		log.Fatal("Invalid adapter type: ", adcfg.Type)
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+// The `adapterIndex` is the index of the adapter to be created.
+func BuildAdapter(cfg core.Configurator, taskName string, adapterIndex int) core.Adapter {
+	adcfg := cfg.GetAdaptersConfig(taskName)[adapterIndex]
+
+	if IsaCastToBooleanAdapter(adcfg.Type) {
+		return NewCastToBooleanAdapter(cfg, taskName, adapterIndex)
 	}
 
+	log.Fatalf("Invalid adapter middlepoint type %s", adcfg.Type)
 	return nil
 }

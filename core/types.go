@@ -21,26 +21,37 @@
 
 package core
 
-// A RowMap represents a row of data moving through a task.
+import "sync"
+
+// A `Configurator` is an interface for objects that can provide the
+// configuration for the whole application.
+type Configurator interface {
+	GetDatabaseConfig(databaseName string) DatabaseConfig
+	GetSourceConfig(taskName string) SourceConfig
+	GetAdaptersConfig(taskName string) []AdapterConfig
+	GetTargetConfig(taskName string) TargetConfig
+}
+
+// A `RowMap` represents a row of data moving through a task.
 type RowMap map[string]any
 
-// A Source endpoint is a subtask which retrieves data from a specialized
+// A `Source` endpoint is a subtask which retrieves data from a specialized
 // type of data source.
 type Source interface {
 	// Run creates a `goroutine` to execute the retrieval procedure.
-	Run() <-chan RowMap
+	Run(*sync.WaitGroup) <-chan RowMap
 }
 
 // An Adapter middlepoint is a subtask which applies a transformation
 // to a each row of data retrieved from the previous stage in a task.
 type Adapter interface {
 	// Run creates a `goroutine` to execute the adapter procedure.
-	Run(<-chan RowMap) <-chan RowMap
+	Run(*sync.WaitGroup, <-chan RowMap) <-chan RowMap
 }
 
 // A Target endpoint is a subtask which sends data to a specialized
 // type of data target.
 type Target interface {
 	// Run creates a `goroutine` to execute the sending procedure.
-	Run(<-chan RowMap)
+	Run(*sync.WaitGroup, <-chan RowMap)
 }

@@ -22,7 +22,6 @@ package targets
 
 import (
 	"log"
-	"sync"
 
 	"github.com/tnotstar/sqltoapi/core"
 )
@@ -30,16 +29,19 @@ import (
 // `BuildTarget` creates a new instance of the target endpoint specified
 // by the configuration object passed as argument.
 //
-// The `wg` is a pointer to the wait group to be used to sync all targets.
-// The `task` is the name of the task is being executed.
-// The `tgcfg` is the configuration for the object to be created.
-func BuildTarget(wg *sync.WaitGroup, task string, tgcfg core.TargetConfig) core.Target {
-	switch tgcfg.Type {
-	case "jsonl-file":
-		return NewJSONLinesTarget(wg, task, tgcfg.Output)
-	default:
-		log.Fatal("Invalid target type: ", tgcfg.Type)
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+func BuildTarget(cfg core.Configurator, taskName string) core.Target {
+	tgcfg := cfg.GetTargetConfig(taskName)
+
+	if IsaJSONLTarget(tgcfg.Type) {
+		return NewJSONLTarget(cfg, taskName)
 	}
 
+	if IsaHttpTarget(tgcfg.Type) {
+		return NewHttpTarget(cfg, taskName)
+	}
+
+	log.Fatalf("Invalid target endpoint type %s", tgcfg.Type)
 	return nil
 }
