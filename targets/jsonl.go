@@ -39,22 +39,22 @@ type JSONLinesTarget struct {
 	fileName string
 }
 
-// `IsaJSONLTarget` returns true if given target type
+// `IsaJSONLFileTarget` returns true if given target type
 // is a JSONLines.
-func IsaJSONLTarget(sourceType string) bool {
-	return sourceType == "jsonl-target"
+func IsaJSONLFileTarget(sourceType string) bool {
+	return sourceType == "jsonl-file-target"
 }
 
-// `NewJSONLTarget` creates a new instance of the JSONLines target endpoint.
+// `NewJSONLFileTarget` creates a new instance of the JSONLines target endpoint.
 //
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func NewJSONLTarget(cfg core.Configurator, taskName string) *JSONLinesTarget {
-	tgcfg := cfg.GetTargetConfig(taskName)
+func NewJSONLFileTarget(cfg core.Configurator, taskName string) *JSONLinesTarget {
+	targetConfig, _ := cfg.GetTargetConfig(taskName)
 
 	return &JSONLinesTarget{
 		task:     taskName,
-		fileName: tgcfg.Output,
+		fileName: targetConfig.Arguments["filename"].(string),
 	}
 }
 
@@ -62,13 +62,13 @@ func NewJSONLTarget(cfg core.Configurator, taskName string) *JSONLinesTarget {
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
 func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
-	log.Printf("Starting JSONLines target for task %s...", tgt.task)
+	log.Printf("* Creating JSONLines target for task %s...", tgt.task)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		log.Printf("Creating output file: %s\n", tgt.fileName)
+		log.Printf(" - Creating JSONLines output file: %s\n", tgt.fileName)
 		writer, err := os.Create(tgt.fileName)
 		if err != nil {
 			log.Fatalf("Error creating file %s: %s", tgt.fileName, err.Error())
@@ -76,7 +76,7 @@ func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 		defer writer.Close()
 
 		counter := 0
-		log.Println("Writing data to the output file")
+		log.Printf(" - Writing data to the output file: '%s'...", tgt.fileName)
 		for row := range in {
 			buffer, err := json.Marshal(row)
 			if err != nil {
@@ -91,8 +91,8 @@ func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 			counter += 1
 		}
 
-		log.Printf("Wrote %d row(s) to the output file", counter)
+		log.Printf(" - Written %d row(s) to the output file: '%s'!", counter, tgt.fileName)
 	}()
 
-	log.Printf("JSONLines target for task %s started successfully", tgt.task)
+	log.Printf("* JSONLines target for task %s started successfully!", tgt.task)
 }

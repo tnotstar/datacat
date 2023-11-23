@@ -32,16 +32,19 @@ import (
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 func BuildTarget(cfg core.Configurator, taskName string) core.Target {
-	tgcfg := cfg.GetTargetConfig(taskName)
-
-	if IsaJSONLTarget(tgcfg.Type) {
-		return NewJSONLTarget(cfg, taskName)
+	targetConfig, err := cfg.GetTargetConfig(taskName)
+	if err != nil {
+		log.Fatalf("Error getting source configuration for task %s: %s", taskName, err)
 	}
 
-	if IsaHttpTarget(tgcfg.Type) {
-		return NewHttpTarget(cfg, taskName)
+	if IsaJSONLFileTarget(targetConfig.Type) {
+		return NewJSONLFileTarget(cfg, taskName)
 	}
 
-	log.Fatalf("Invalid target endpoint type %s", tgcfg.Type)
+	if IsaHttpRequestTarget(targetConfig.Type) {
+		return NewHttpRequestTarget(cfg, taskName)
+	}
+
+	log.Fatalf("Invalid target endpoint type %s", targetConfig.Type)
 	return nil
 }

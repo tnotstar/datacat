@@ -30,36 +30,37 @@ import (
 	"github.com/tnotstar/sqltoapi/core"
 )
 
-// `JSONLinesSource` is the concrete implementation of the source interface
+// `JSONLFileSource` is the concrete implementation of the source interface
 // for JSONLines (or NDJSON) file reader. It reads data from a given
 // file(s) in NDJSON format and send each row to the output processing channel.
-type JSONLinesSource struct {
+type JSONLFileSource struct {
 	// The `task` of the task which is running into.
 	task string
 	// The `fileName` of the file to be read.
 	fileName string
 }
 
-func IsaJSONLSource(sourceType string) bool {
-	return sourceType == "jsonl-file"
+func IsaJSONLFileSource(sourceType string) bool {
+	return sourceType == "jsonl-file-source"
 }
 
-// `NewJSONLSource` creates a new instance of the JSONLines source endpoint.
+// `NewJSONLFileSource` creates a new instance of the JSONLines source endpoint.
 //
 // The `task` is the name of the task to be executed.
 // The `filename` is the name of the file to be read.
-func NewJSONLSource(cfg core.Configurator, taskName string) *JSONLinesSource {
-	tgcfg := cfg.GetTargetConfig(taskName)
-	return &JSONLinesSource{
+func NewJSONLFileSource(cfg core.Configurator, taskName string) *JSONLFileSource {
+	sourceConfig, _ := cfg.GetSourceConfig(taskName)
+
+	return &JSONLFileSource{
 		task:     taskName,
-		fileName: tgcfg.Output,
+		fileName: sourceConfig.Arguments["filename"].(string),
 	}
 }
 
 // `Run` creates a goroutine that reads data from the database and sends
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
-func (src *JSONLinesSource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
+func (src *JSONLFileSource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
 	log.Printf("Starting JSONLines source for task %s...", src.task)
 	out := make(chan core.RowMap)
 
@@ -82,15 +83,11 @@ func (src *JSONLinesSource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
 			if err := json.Unmarshal(scanner.Bytes(), &row); err != nil {
 				log.Fatalf("Error unmarshalling data row: %s", err.Error())
 			}
-			log.Printf(">>> %v", row)
 			out <- row
 			counter += 1
 		}
 
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
-
+		close(out)
 		log.Printf("Read %d row(s) from the input file", counter)
 	}()
 

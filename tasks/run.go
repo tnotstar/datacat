@@ -34,27 +34,27 @@ import (
 //
 // The `taskName` is the name of the task to be executed.
 func RunTask(taskName string) {
-	log.Printf("Running task %s...", taskName)
+	log.Printf("Running task: '%s'...", taskName)
+	cfg := core.GetConfig()
 	var wg sync.WaitGroup
 	var prev, next <-chan core.RowMap
 
-	cfg := core.GetConfig()
-
-	log.Printf("Starting source for task %s...", taskName)
+	log.Printf("> Starting source for task %s...", taskName)
 	source := sources.BuildSource(cfg, taskName)
-	prev = source.Run(&wg)
+	next = source.Run(&wg)
+	prev = next
 
-	next = prev
-	for idx := range cfg.GetAdaptersConfig(taskName) {
-		log.Printf("Starting adapter #%d for task %s...", idx, taskName)
-		adapter := adapters.BuildAdapter(cfg, taskName, idx)
+	for _, adapterName := range cfg.GetAdapterNames(taskName) {
+		log.Printf("> Starting adapter %s in task %s...", adapterName, taskName)
+		adapter := adapters.BuildAdapter(cfg, taskName, adapterName)
 		next = adapter.Run(&wg, prev)
+		prev = next
 	}
 
-	log.Printf("Starting target for task %s...", taskName)
+	log.Printf("> Starting target for task %s...", taskName)
 	target := targets.BuildTarget(cfg, taskName)
-	target.Run(&wg, next)
+	target.Run(&wg, prev)
 
 	wg.Wait()
-	log.Printf("Task \"%s\" finished!", taskName)
+	log.Printf("Task '%s' finished!", taskName)
 }

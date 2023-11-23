@@ -21,62 +21,78 @@
 package core
 
 import (
+	"errors"
 	"log"
+	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
 // `Config` represents the configuration data for the whole application.
 type Config struct {
-	// A map with all database conections configuration.
+	// A map with all databases connection configuration.
 	Databases map[string]DatabaseConfig `mapstructure:"databases"`
+
+	// A map with all http endpoints configuration.
+	Services map[string]ServiceConfig `mapstructure:"services"`
 
 	// An array with all task configurations
 	Tasks map[string]struct {
 		// Specifies the configuration for the source endpoint.
 		Source SourceConfig `mapstructure:"source"`
 		// Specifies the configuration of the adapters array.
-		Adapters []AdapterConfig `mapstructure:"adapters"`
+		Adapters map[string]AdapterConfig `mapstructure:"adapters"`
 		// Specifies the configuration of the target endpoint.
 		Target TargetConfig `mapstructure:"target"`
 	}
 }
 
-// `DatabaseConfig` specifies the configuration for a database conection.
+// `DatabaseConfig` specifies the configuration for a database connection.
 type DatabaseConfig struct {
-	// The database driver identifier.
+	// The database `driver` identifier.
 	Driver string `mapstructure:"driver"`
-	// The server host name.
-	Host string `mapstructure:"hostname"`
-	// The server port number.
+	// The server `host` name.
+	Host string `mapstructure:"host"`
+	// The server `port` number.
 	Port int `mapstructure:"port"`
-	// The database servirce name.
-	Service string `mapstructure:"service"`
-	// The database user name.
+	// The `database` service name.
+	Database string `mapstructure:"database"`
+	// The connection `username`.
 	Username string `mapstructure:"username"`
-	// The database user password.
+	// The connection user `password`.
 	Password string `mapstructure:"password"`
-	// The database conection URI.
-	URI string `mapstructure:"uri"`
+}
+
+// `ServiceConfig` specifies the configuration for an HTTP endpoint.
+type ServiceConfig struct {
+	// The base URL for the endpoint.
+	BaseURL string `mapstructure:"baseurl"`
+	// The `method` for the HTTP request.
+	Method string `mapstructure:"method"`
+	// The query `parameters` for the HTTP request.
+	Parameters map[string]string `mapstructure:"parameters"`
+	// The name of the authorization service to use.
+	WithAuthz string `mapstructure:"withauthz"`
+	// A flag to indicate if the certificate must be trusted.
+	TrustCert bool `mapstructure:"trustcert"`
 }
 
 // `SourceConfig` specifies the configuration of a source endpoint.
 type SourceConfig struct {
 	// The type of source endpoint.
 	Type string `mapstructure:"type"`
-	// // The name or pattern for the input from source.
-	Database string `mapstructure:"input"`
-	// The query to fetch data from the database.
-	Query string `mapstructure:"query"`
+	// The arguments for the source driver.
+	Arguments map[string]any `mapstructure:"arguments"`
 }
 
-// `AdapterConfig` specifies the configuration of each adapter middlepoint.
+// `AdaptersConfig` specifies the configuration of an adapter middlepoint.
 type AdapterConfig struct {
 	// The type of conversion adapter.
 	Type string `mapstructure:"type"`
-	// A list of the fields to be converted.
-	Fields []string `mapstructure:"fields"`
+	// The arguments for the adapter driver.
+	Arguments map[string]any `mapstructure:"arguments"`
 }
 
 // `TargetConfig` specifies the configuration of the target endpoint.
@@ -84,17 +100,102 @@ type TargetConfig struct {
 	// The type of source endpoint.
 	Type string `mapstructure:"type"`
 	// The name or pattern for the output to target.
-	Output string `mapstructure:"output"`
+	Arguments map[string]any `mapstructure:"arguments"`
 }
-
-// `defaultEnvPrefix` is the default prefix for environment variables.
-const defaultEnvPrefix = "SQL2API"
 
 // `cfg` is the global configuration instance.
 var cfg Config
 
+// `GetConfig` returns a pointer to the global configuration instance.
+func GetConfig() *Config {
+	return &cfg
+}
+
+// `GetDatabaseConfig` method implementation.
+func (cfg *Config) GetDatabaseConfig(name string) (*DatabaseConfig, error) {
+	database, ok := cfg.Databases[name]
+	if !ok {
+		return nil, errors.New("Missing configuration for database: " + name)
+	}
+
+	return &database, nil
+}
+
+// `GetServiceConfig` method implementation.
+func (cfg *Config) GetServiceConfig(name string) (*ServiceConfig, error) {
+	service, ok := cfg.Services[name]
+	if !ok {
+		return nil, errors.New("Missing configuration for service: " + name)
+	}
+
+	return &service, nil
+}
+
+// `GetSourceConfig` method implementation.
+func (cfg *Config) GetSourceConfig(name string) (*SourceConfig, error) {
+	task, ok := cfg.Tasks[name]
+	if !ok {
+		return nil, errors.New("Missing configuration for task: " + name)
+	}
+
+	return &task.Source, nil
+}
+
+// `GetAdapterNames` method implementation.
+func (cfg *Config) GetAdapterNames(name string) []string {
+	task, ok := cfg.Tasks[name]
+	if !ok {
+		return []string{}
+	}
+
+	names := make([]string, 0, len(task.Adapters))
+	for name := range task.Adapters {
+		names = append(names, name)
+	}
+	return names
+}
+
+// `GetAdapterConfig` method implementation.
+func (cfg *Config) GetAdapterConfig(name string, key string) (*AdapterConfig, error) {
+	task, ok := cfg.Tasks[name]
+	if !ok {
+		return nil, errors.New("Missing configuration for task: " + name)
+	}
+
+	adapter, ok := task.Adapters[key]
+	if !ok {
+		return nil, errors.New("Missing configuration for adapter: " + key)
+	}
+	return &adapter, nil
+}
+
+// `GetTargetConfig` method implementation.
+func (cfg *Config) GetTargetConfig(name string) (*TargetConfig, error) {
+	task, ok := cfg.Tasks[name]
+	if !ok {
+		return nil, errors.New("Missing configuration for task: " + name)
+	}
+
+	return &task.Target, nil
+}
+
+// The default environment variable prefix.
+const defaultEnvPrefix = "SQL2API"
+
 // `LoadConfig` initializes the global configuration instance.
-func InitConfig(cfgfile string) {
+func LoadConfig(cfgfile string) {
+	env := os.Getenv(defaultEnvPrefix + "_ENV")
+	if env == "" {
+		env = "development"
+	}
+
+	godotenv.Load(".env." + env + ".local")
+	if env != "test" {
+		godotenv.Load(".env.local")
+	}
+	godotenv.Load(".env." + env)
+	godotenv.Load()
+
 	viper.AddConfigPath(".")
 	viper.SetConfigType("yaml")
 	viper.SetConfigFile(cfgfile)
@@ -103,76 +204,11 @@ func InitConfig(cfgfile string) {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
+	viper.AutomaticEnv()
 	viper.SetEnvPrefix(defaultEnvPrefix)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
 
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Error unmarshalling config file: %s", err)
 	}
-}
-
-// `GetConfig` returns a pointer to the global configuration instance.
-func GetConfig() *Config {
-	return &cfg
-}
-
-// `GetDatabaseConfig` returns the configuration of the database
-// with a given database name in the global configuration instance.
-//
-// The `databaseName` is the name of the database to be returned, if it exists.
-//
-// NB. If the database does not exist, the function will panic.
-func (cfg *Config) GetDatabaseConfig(databaseName string) DatabaseConfig {
-	database, ok := cfg.Databases[databaseName]
-	if !ok {
-		log.Fatalf("Missing configuration for database named: %s", databaseName)
-	}
-	return database
-}
-
-// `GetSourceConfig` returns the configuration of the source endpoint of
-// the task with a given name in the global configuration instance.
-//
-// The `taskName` is the name of the task which database configuration will be
-// returned, if it exists.
-//
-// NB. If the task does not exist, the function will panic.
-func (cfg *Config) GetSourceConfig(taskName string) SourceConfig {
-	task, ok := cfg.Tasks[taskName]
-	if !ok {
-		log.Fatalf("Missing configuration for task named: %s", taskName)
-	}
-	return task.Source
-}
-
-// `GetAdaptersConfig` returns the array with the configuration of all
-// adapter middlepoints of the task with a given name in the global
-// configuration instance.
-//
-// The `taskName` is the name of the task which database configuration will be
-// returned, if it exists.
-//
-// NB. If the task or the adapter does not exist, the function will panic.
-func (cfg *Config) GetAdaptersConfig(taskName string) []AdapterConfig {
-	task, ok := cfg.Tasks[taskName]
-	if !ok {
-		log.Fatalf("Missing configuration for task named: %s", taskName)
-	}
-	return task.Adapters
-}
-
-// `GetTargetConfig` returns the configuration of the target endpoint of
-// the task with a given name in the global configuration instance.
-//
-// The `taskName` is the name of the task which database configuration will be
-// returned, if it exists.
-//
-// NB. If the task does not exist, the function will panic.
-func (cfg *Config) GetTargetConfig(taskName string) TargetConfig {
-	task, ok := cfg.Tasks[taskName]
-	if !ok {
-		log.Fatalf("Missing configuration for task named: %s", taskName)
-	}
-	return task.Target
 }

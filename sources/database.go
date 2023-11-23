@@ -24,20 +24,24 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/tnotstar/sqltoapi/core"
 
+	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
 )
 
-// `OracleSource` is the concrete implementation of the source interface
+// `DatabaseQuerySource` is the concrete implementation of the source interface
 // for Oracle databases. It reads data from an Oracle database and sends
 // it to the output processing channel.
-type OracleSource struct {
+type DatabaseQuerySource struct {
 	// `task` is the name of the task which is running into.
 	task string
+	// `database` is the name of the database to be used.
+	database string
 	// `driver` is the name of the database driver to be used.
 	driver string
 	// `uri` is a string containing the connection URI.
@@ -46,75 +50,82 @@ type OracleSource struct {
 	query string
 }
 
-// `IsaOracleSource` returns true if given source type is
-// an Oracle Query.
-func IsaOracleSource(sourceType string) bool {
-	return sourceType == "oracle-query"
+// `IsaDatabaseQuerySource` returns true if given source type is
+// an Database Query.
+func IsaDatabaseQuerySource(sourceType string) bool {
+	return sourceType == "database-query-source"
 }
 
-// `NewOracleSource` creates a new instance of the Oracle Source endpoint.
+// `NewDatabaseQuerySource` creates a new instance of the Database Source endpoint.
 //
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func NewOracleSource(cfg core.Configurator, taskName string) core.Source {
-	srcfg := cfg.GetSourceConfig(taskName)
-	dbcfg := cfg.GetDatabaseConfig(srcfg.Database)
-
-	uri := &url.URL{
-		Scheme: "oracle",
-		User:   url.UserPassword(dbcfg.Username, dbcfg.Password),
-		Host:   fmt.Sprintf("%s:%d", dbcfg.Host, dbcfg.Port),
-		Path:   dbcfg.Service,
+func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source {
+	sourceConfig, _ := cfg.GetSourceConfig(taskName)
+	dbName := sourceConfig.Arguments["database"].(string)
+	dbConfig, err := cfg.GetDatabaseConfig(dbName)
+	if err != nil {
+		log.Fatalf("Error getting configuration for database %s in task %s: %s", dbName, taskName, err)
 	}
 
-	return &OracleSource{
-		task:   taskName,
-		driver: "oracle",
-		uri:    uri.String(),
-		query:  srcfg.Query,
+	uri := &url.URL{
+		Scheme: dbConfig.Driver,
+		User:   url.UserPassword(dbConfig.Username, dbConfig.Password),
+		Host:   fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port),
+		Path:   dbConfig.Database,
+	}
+
+	return &DatabaseQuerySource{
+		task:     taskName,
+		database: dbName,
+		driver:   dbConfig.Driver,
+		uri:      uri.String(),
+		query:    sourceConfig.Arguments["query"].(string),
 	}
 }
 
 // `Run` creates a goroutine that reads data from the database and sends
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
-func (src *OracleSource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
+func (src *DatabaseQuerySource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
+	log.Printf("* Creating DatabaseQuery source on database '%s'...", src.database)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		log.Printf("Opening a connection to the database for task: %s", src.task)
+		log.Printf(" - Opening a connection to the database: '%s'...", src.database)
 		db, err := sqlx.Open(src.driver, src.uri)
 		if err != nil {
 			log.Fatal("Error opening connection to database: ", err)
 		}
 		defer db.Close()
 
-		log.Printf("Executing the database query: %s...", src.query[:24])
+		log.Printf(" - Executing the database query: '%s'...", strings.TrimSpace(src.query[:24]))
 		rows, err := db.Queryx(src.query)
 		if err != nil {
 			log.Fatal("Error trying to execute a query: ", err)
 		}
 		defer rows.Close()
 
-		log.Println("Fetching rows from the database")
+		log.Printf(" - Fetching rows from the database: '%s'...", src.database)
 		columns, _ := rows.Columns()
 		length := len(columns)
 		counter := 0
 		for rows.Next() {
-			results := make(core.RowMap, length)
-			if err := rows.MapScan(results); err != nil {
+			row := make(core.RowMap, length)
+			if err := rows.MapScan(row); err != nil {
 				log.Fatal("Failed to scan map from current row: ", err)
 			}
 			counter++
-			out <- results
+			out <- row
 		}
 
 		close(out)
-		log.Printf("Closing output channel after processed %d rows", counter)
+		log.Printf(" - Closing output channel after processed %d rows", counter)
 	}()
 
+	log.Printf("* DatabaseQuery source for task %s started successfully!", src.task)
 	return out
 }

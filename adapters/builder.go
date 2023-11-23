@@ -31,14 +31,21 @@ import (
 //
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-// The `adapterIndex` is the index of the adapter to be created.
-func BuildAdapter(cfg core.Configurator, taskName string, adapterIndex int) core.Adapter {
-	adcfg := cfg.GetAdaptersConfig(taskName)[adapterIndex]
-
-	if IsaCastToBooleanAdapter(adcfg.Type) {
-		return NewCastToBooleanAdapter(cfg, taskName, adapterIndex)
+// The `adapterName` is the index of the adapter to be created.
+func BuildAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+	adapterConfig, err := cfg.GetAdapterConfig(taskName, adapterName)
+	if err != nil {
+		log.Fatalf("Error getting adapters configuration for task %s: %s", taskName, err)
 	}
 
-	log.Fatalf("Invalid adapter middlepoint type %s", adcfg.Type)
+	if IsaCastToDatatypeAdapter(adapterConfig.Type) {
+		return NewCastToDatatypeAdapter(cfg, taskName, adapterName)
+	}
+
+	if IsaCryptoAESCBCZeroAdapter(adapterConfig.Type) {
+		return NewCryptoAESCBCZeroAdapter(cfg, taskName, adapterName)
+	}
+
+	log.Fatalf("Invalid adapter middlepoint type %s", adapterConfig.Type)
 	return nil
 }

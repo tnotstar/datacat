@@ -32,16 +32,19 @@ import (
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 func BuildSource(cfg core.Configurator, taskName string) core.Source {
-	srcfg := cfg.GetSourceConfig(taskName)
-
-	if IsaOracleSource(srcfg.Type) {
-		return NewOracleSource(cfg, taskName)
+	sourceConfig, err := cfg.GetSourceConfig(taskName)
+	if err != nil {
+		log.Fatalf("Error getting source configuration for task %s: %s", taskName, err)
 	}
 
-	if IsaJSONLSource(srcfg.Type) {
-		return NewJSONLSource(cfg, taskName)
+	if IsaDatabaseQuerySource(sourceConfig.Type) {
+		return NewDatabaseQuerySource(cfg, taskName)
 	}
 
-	log.Fatalf("Invalid source endpoint type %s", srcfg.Type)
+	if IsaJSONLFileSource(sourceConfig.Type) {
+		return NewJSONLFileSource(cfg, taskName)
+	}
+
+	log.Fatalf("Invalid source endpoint type %s", sourceConfig.Type)
 	return nil
 }

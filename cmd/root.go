@@ -44,7 +44,7 @@ its data to one or more local NDJSON file(s).
 As an API end-point caller, it reads the NDJSON file(s) and
 uploads its data to a given API server.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		core.InitConfig(cfgFile)
+		core.LoadConfig(cfgFile)
 	},
 }
 

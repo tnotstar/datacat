@@ -28,42 +28,49 @@ import (
 	"github.com/tnotstar/sqltoapi/core"
 )
 
-// `CastToBooleanAdapter` casts the given fields to boolean values.
-type CastToBooleanAdapter struct {
+// `CastToDatatypeAdapter` casts the given fields to boolean values.
+type CastToDatatypeAdapter struct {
 	// The `task` of the task which is running into.
 	task string
-	// The `index` of the adapter.
-	index int
+	// The name of the `adapter`.
+	adapter string
 	// The `fields` to be casted.
 	fields []string
 }
 
-// `IsaCastToBooleanAdapter` returns true if given adapter type is
-// an CastToBoolean.
-func IsaCastToBooleanAdapter(sourceType string) bool {
-	return sourceType == "cast-to-boolean"
+// `IsaCastToDatatypeAdapter` returns true if given adapter type
+// is CastToDatatype.
+func IsaCastToDatatypeAdapter(adapterType string) bool {
+	return adapterType == "cast-to-datatype-adapter"
 }
 
-// `NewCastToBooleanAdapter` creates a new instance of the CastToBoolean adapter.
+// `NewCastToDatatypeAdapter` creates a new instance of the CastToDatatype adapter.
 //
-// The `task` is the name of the task to be executed.
-// The `fields` is an array with the names of the fields to be casted.
-func NewCastToBooleanAdapter(cfg core.Configurator, taskName string, adapterIndex int) core.Adapter {
-	adcfg := cfg.GetAdaptersConfig(taskName)[adapterIndex]
+// The `cfg` is the global configuration object.
+// The `taskName` is the name of the task to be executed.
+// The `adapterName` is the name of the adapter to be created.
+func NewCastToDatatypeAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
-	return &CastToBooleanAdapter{
-		task:   taskName,
-		index:  adapterIndex,
-		fields: adcfg.Fields,
+	fields := adapterConfig.Arguments["fields"].([]any)
+	fieldstrs := make([]string, len(fields))
+	for i, field := range fields {
+		fieldstrs[i] = fmt.Sprint(field)
+	}
+
+	return &CastToDatatypeAdapter{
+		task:    taskName,
+		adapter: adapterName,
+		fields:  fieldstrs,
 	}
 }
 
-// CastToBoolean casts given row fields to boolean values.
+// CastToDatatype casts given row fields to boolean values.
 //
 // The `fields` is a list of fields to be casted.
 //
 // Returns the output channel of the casted rows.
-func (adp *CastToBooleanAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+func (adp *CastToDatatypeAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
 	out := make(chan core.RowMap)
 
 	wg.Add(1)
