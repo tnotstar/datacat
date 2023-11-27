@@ -82,9 +82,9 @@ func NewNamesRandomizerAdapter(cfg core.Configurator, taskName string, adapterNa
 	}
 
 	basePath := filepath.Dir(cfg.GetConfigFilename())
-	allFilename := resolveFilename(basePath, fmt.Sprint(randomArgs["lastnames"]))
-	maleFilename := resolveFilename(basePath, fmt.Sprint(randomArgs["malenames"]))
-	femaleFilename := resolveFilename(basePath, fmt.Sprint(randomArgs["femalenames"]))
+	allFilename := core.ResolveFilename(basePath, fmt.Sprint(randomArgs["lastnames"]))
+	maleFilename := core.ResolveFilename(basePath, fmt.Sprint(randomArgs["malenames"]))
+	femaleFilename := core.ResolveFilename(basePath, fmt.Sprint(randomArgs["femalenames"]))
 
 	rng := newRandomGenerator(fmt.Sprint(randomArgs["seed"]))
 	allData := getNamesData(allFilename)
@@ -152,15 +152,7 @@ func newRandomGenerator(raw string) *rand.Rand {
 	return rand.New(rand.NewSource(seed))
 }
 
-// `resolveFilename` resolves the filename to an absolute path.
-func resolveFilename(basepath string, filename string) string {
-	if filepath.IsAbs(filename) {
-		return filename
-	}
-	return filepath.Join(basepath, filename)
-}
-
-// `getNamesData` returns the data for the given filename.
+// `getNamesData` returns the names data from a file with given filename.
 func getNamesData(filename string) []nameData {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -197,6 +189,7 @@ func getNamesData(filename string) []nameData {
 	return names
 }
 
+// `getRandomName` returns a random name from the given data.
 func getRandomName(data *[]nameData) string {
 	count := len(*data)
 	max := (*data)[count-1].cumFreq

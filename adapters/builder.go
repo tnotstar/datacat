@@ -38,6 +38,14 @@ func BuildAdapter(cfg core.Configurator, taskName string, adapterName string) co
 		log.Fatalf("Error getting adapters configuration for task %s: %s", taskName, err)
 	}
 
+	if IsaCaseConversionAdapter(adapterConfig.Type) {
+		return NewCaseConversionAdapter(cfg, taskName, adapterName)
+	}
+
+	if IsaConstantMappingAdapter(adapterConfig.Type) {
+		return NewConstantMappingAdapter(cfg, taskName, adapterName)
+	}
+
 	if IsaCastToDatatypeAdapter(adapterConfig.Type) {
 		return NewCastToDatatypeAdapter(cfg, taskName, adapterName)
 	}
@@ -46,12 +54,12 @@ func BuildAdapter(cfg core.Configurator, taskName string, adapterName string) co
 		return NewCryptoAESCBCZeroAdapter(cfg, taskName, adapterName)
 	}
 
-	if IsaNullHandlingAdapter(adapterConfig.Type) {
-		return NewNullHandlingAdapter(cfg, taskName, adapterName)
-	}
-
 	if IsaNamesRandomizerAdapter(adapterConfig.Type) {
 		return NewNamesRandomizerAdapter(cfg, taskName, adapterName)
+	}
+
+	if IsaNullHandlingAdapter(adapterConfig.Type) {
+		return NewNullHandlingAdapter(cfg, taskName, adapterName)
 	}
 
 	log.Fatalf("Invalid adapter middlepoint type %s", adapterConfig.Type)
