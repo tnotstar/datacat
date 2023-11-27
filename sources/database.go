@@ -62,10 +62,11 @@ func IsaDatabaseQuerySource(sourceType string) bool {
 // The `taskName` is the name of the task to be executed.
 func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source {
 	sourceConfig, _ := cfg.GetSourceConfig(taskName)
+
 	dbName := sourceConfig.Arguments["database"].(string)
 	dbConfig, err := cfg.GetDatabaseConfig(dbName)
 	if err != nil {
-		log.Fatalf("Error getting configuration for database %s in task %s: %s", dbName, taskName, err)
+		log.Fatalf("Can't get configuration of database '%s' for task '%s': %s", dbName, taskName, err)
 	}
 
 	uri := &url.URL{

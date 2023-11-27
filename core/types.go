@@ -60,6 +60,9 @@ type Configurator interface {
 	//
 	// The `name` is the task key with the configuration to be returned.
 	GetTargetConfig(name string) (*TargetConfig, error)
+
+	// `GetConfigFilename` returns the name of the configuration file.
+	GetConfigFilename() string
 }
 
 // A `RowMap` represents a row of data moving through a task.

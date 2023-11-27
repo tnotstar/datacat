@@ -46,6 +46,14 @@ func BuildAdapter(cfg core.Configurator, taskName string, adapterName string) co
 		return NewCryptoAESCBCZeroAdapter(cfg, taskName, adapterName)
 	}
 
+	if IsaNullHandlingAdapter(adapterConfig.Type) {
+		return NewNullHandlingAdapter(cfg, taskName, adapterName)
+	}
+
+	if IsaNamesRandomizerAdapter(adapterConfig.Type) {
+		return NewNamesRandomizerAdapter(cfg, taskName, adapterName)
+	}
+
 	log.Fatalf("Invalid adapter middlepoint type %s", adapterConfig.Type)
 	return nil
 }

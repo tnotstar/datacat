@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"sync"
 
@@ -43,6 +44,8 @@ type HttpRequestTarget struct {
 	url string
 	// The `method` to use.
 	method string
+	// The `trustcert` is a flag to indicate if certificates must be trusted.
+	trustcert bool
 	// The `authzURL` is the authorization url to get the JWT token from.
 	authzURL string
 	// The `authzMethod` is the HTTP method to use for authorization.
@@ -51,8 +54,6 @@ type HttpRequestTarget struct {
 	authzClient string
 	// The `authzCredential` to use for authorization.
 	authzCredential string
-	// The `trustcert` is a flag to indicate if certificates must be trusted.
-	trustcert bool
 }
 
 // `IsaHttpRequestTarget` returns true if given target type
@@ -91,11 +92,11 @@ func NewHttpRequestTarget(cfg core.Configurator, taskName string) *HttpRequestTa
 		task:            taskName,
 		url:             targetURL,
 		method:          targetMethod,
+		trustcert:       serviceConfig.TrustCert,
 		authzURL:        authzConfig.BaseURL,
 		authzMethod:     authzConfig.Method,
 		authzClient:     authzConfig.Parameters["client"],
 		authzCredential: authzConfig.Parameters["credential"],
-		trustcert:       serviceConfig.TrustCert,
 	}
 }
 
@@ -105,8 +106,13 @@ func NewHttpRequestTarget(cfg core.Configurator, taskName string) *HttpRequestTa
 func (tgt *HttpRequestTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 	log.Printf("Starting HttpTarget target for task %s...", tgt.task)
 
-	log.Println("Requesting Jwtoken from Authz server...")
+	log.Println("Requesting JWToken from the authz server...")
 	jwtoken := tgt.GetJWTokenFromAuthzServer()
+	authorizationBearer := fmt.Sprintf("Bearer %s", jwtoken)
+	log.Println("JWToken received successfully:", authorizationBearer)
+
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	client := &http.Client{Transport: tr}
 
 	wg.Add(1)
 	go func() {
@@ -124,21 +130,24 @@ func (tgt *HttpRequestTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 			if err != nil {
 				log.Fatalf("Error creating request: %s", err.Error())
 			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s"+jwtoken))
+			req.Header.Add("Content-Type", "application/json")
+			req.Header.Add("Authorization", authorizationBearer)
 
-			tr := &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			reqDump, err := httputil.DumpRequestOut(req, true)
+			if err == nil {
+				log.Print("Requesting:\n", string(reqDump))
+			} else {
+				log.Print("Error dumping request:", err.Error())
 			}
 
-			client := &http.Client{Transport: tr}
 			res, err := client.Do(req)
 			if err != nil {
 				log.Fatalf("Error sending request: %s", err.Error())
 			}
 			res.Body.Close()
 
-			log.Printf("Sending data row: %s", string(buffer))
+			log.Println("Sending data row:", res.Status)
+
 			counter += 1
 		}
 
@@ -164,8 +173,8 @@ func (tgt *HttpRequestTarget) GetJWTokenFromAuthzServer() string {
 	if err != nil {
 		log.Fatalf("Error creating request for authz: %s", err.Error())
 	}
-	log.Printf("Requesting authz token from %s", url.String())
 
+	log.Printf("Requesting authz token from: %s", tgt.authzURL)
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: tgt.trustcert},
 	}
@@ -182,6 +191,6 @@ func (tgt *HttpRequestTarget) GetJWTokenFromAuthzServer() string {
 		log.Fatalf("Error decoding authz response: %s", err.Error())
 	}
 
-	log.Printf(">>>>>>>>>>>> %v <<<<<<<<<<<<<", jsonBody)
-	return fmt.Sprint(jsonBody.(map[string]any)["token"])
+	rawToken := jsonBody.(map[string]any)["token"]
+	return fmt.Sprint(rawToken)
 }

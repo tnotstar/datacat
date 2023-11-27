@@ -24,6 +24,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -47,6 +48,9 @@ type Config struct {
 		// Specifies the configuration of the target endpoint.
 		Target TargetConfig `mapstructure:"target"`
 	}
+
+	// The name of the configuration file loaded from.
+	configFilename string
 }
 
 // `DatabaseConfig` specifies the configuration for a database connection.
@@ -91,6 +95,8 @@ type SourceConfig struct {
 type AdapterConfig struct {
 	// The type of conversion adapter.
 	Type string `mapstructure:"type"`
+	// The execution `order` of the adapter in the chain.
+	Order int `mapstructure:"order"`
 	// The arguments for the adapter driver.
 	Arguments map[string]any `mapstructure:"arguments"`
 }
@@ -152,6 +158,11 @@ func (cfg *Config) GetAdapterNames(name string) []string {
 	for name := range task.Adapters {
 		names = append(names, name)
 	}
+
+	sort.Slice(names, func(i, j int) bool {
+		return task.Adapters[names[i]].Order < task.Adapters[names[j]].Order
+	})
+
 	return names
 }
 
@@ -177,6 +188,11 @@ func (cfg *Config) GetTargetConfig(name string) (*TargetConfig, error) {
 	}
 
 	return &task.Target, nil
+}
+
+// `GetConfigFilename` method implementation.
+func (cfg *Config) GetConfigFilename() string {
+	return cfg.configFilename
 }
 
 // The default environment variable prefix.
@@ -211,4 +227,6 @@ func LoadConfig(cfgfile string) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Error unmarshalling config file: %s", err)
 	}
+
+	cfg.configFilename = viper.ConfigFileUsed()
 }
