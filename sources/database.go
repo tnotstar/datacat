@@ -119,6 +119,7 @@ func (src *DatabaseQuerySource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
 			if err := rows.MapScan(row); err != nil {
 				log.Fatal("Failed to scan map from current row: ", err)
 			}
+
 			counter++
 			out <- row
 		}
@@ -127,6 +128,6 @@ func (src *DatabaseQuerySource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
 		log.Printf(" - Closing output channel after processed %d rows", counter)
 	}()
 
-	log.Printf("* DatabaseQuery source for task %s started successfully!", src.task)
+	log.Printf("* DatabaseQuery source on database '%s' started successfully!", src.database)
 	return out
 }

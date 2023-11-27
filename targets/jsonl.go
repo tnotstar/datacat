@@ -22,8 +22,10 @@ package targets
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/tnotstar/sqltoapi/core"
@@ -37,6 +39,8 @@ type JSONLinesTarget struct {
 	task string
 	// The `fileName` of the file to be created.
 	fileName string
+	// The `batchSize` of the batch to be written.
+	batchSize int
 }
 
 // `IsaJSONLFileTarget` returns true if given target type
@@ -52,9 +56,13 @@ func IsaJSONLFileTarget(sourceType string) bool {
 func NewJSONLFileTarget(cfg core.Configurator, taskName string) *JSONLinesTarget {
 	targetConfig, _ := cfg.GetTargetConfig(taskName)
 
+	fileName := fmt.Sprint(targetConfig.Arguments["filename"])
+	batchSize, _ := strconv.Atoi(fmt.Sprint(targetConfig.Arguments["batchsize"]))
+
 	return &JSONLinesTarget{
-		task:     taskName,
-		fileName: targetConfig.Arguments["filename"].(string),
+		task:      taskName,
+		fileName:  fileName,
+		batchSize: batchSize,
 	}
 }
 
@@ -62,21 +70,23 @@ func NewJSONLFileTarget(cfg core.Configurator, taskName string) *JSONLinesTarget
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
 func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
-	log.Printf("* Creating JSONLines target for task %s...", tgt.task)
+	log.Printf("* Creating JSONLines target with filename pattern '%s'...", tgt.fileName)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		log.Printf(" - Creating JSONLines output file: %s\n", tgt.fileName)
-		writer, err := os.Create(tgt.fileName)
+		batchNum := 0
+		fileName := fmt.Sprintf(tgt.fileName, batchNum)
+		log.Printf(" - Creating JSONLines target file: '%s'...", fileName)
+
+		writer, err := os.Create(fileName)
 		if err != nil {
-			log.Fatalf("Error creating file %s: %s", tgt.fileName, err.Error())
+			log.Fatalf("Error creating file %s: %s", fileName, err.Error())
 		}
 		defer writer.Close()
 
 		counter := 0
-		log.Printf(" - Writing data to the output file: '%s'...", tgt.fileName)
 		for row := range in {
 			buffer, err := json.Marshal(row)
 			if err != nil {
@@ -88,11 +98,34 @@ func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 			if _, err := writer.WriteString("\n"); err != nil {
 				log.Fatalf("Error writing line terminator: %s", err.Error())
 			}
-			counter += 1
+
+			counter++
+			if tgt.batchSize > 0 && counter%tgt.batchSize == 0 {
+				log.Printf(" - Written %d row(s) to the JSONLines target file: '%s'...", counter, fileName)
+				writer.Close()
+
+				batchNum += 1
+				fileName = fmt.Sprintf(tgt.fileName, batchNum)
+				log.Printf(" - Creating JSONLines target file: '%s'...", fileName)
+
+				writer, err = os.Create(fileName)
+				if err != nil {
+					log.Fatalf("Error creating file %s: %s", tgt.fileName, err.Error())
+				}
+
+			}
 		}
 
-		log.Printf(" - Written %d row(s) to the output file: '%s'!", counter, tgt.fileName)
+		if tgt.batchSize > 0 && counter%tgt.batchSize == 0 {
+			log.Printf(" - Written %d row(s) to the JSONLines target file: '%s'...", counter, fileName)
+			writer.Close()
+
+			err := os.Remove(fileName)
+			if err != nil {
+				log.Fatalf("Error removing empty file %s: %s", tgt.fileName, err.Error())
+			}
+		}
 	}()
 
-	log.Printf("* JSONLines target for task %s started successfully!", tgt.task)
+	log.Printf("* JSONLines target with filename pattern '%s' started successfully!", tgt.fileName)
 }
