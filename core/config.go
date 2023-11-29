@@ -57,16 +57,20 @@ type Config struct {
 type DatabaseConfig struct {
 	// The database `driver` identifier.
 	Driver string `mapstructure:"driver"`
+	// The database `schema` name.
+	Scheme string `mapstructure:"scheme"`
 	// The server `host` name.
 	Host string `mapstructure:"host"`
 	// The server `port` number.
 	Port int `mapstructure:"port"`
-	// The `database` service name.
-	Database string `mapstructure:"database"`
+	// The instance or the `service` name.
+	Service string `mapstructure:"service"`
 	// The connection `username`.
 	Username string `mapstructure:"username"`
 	// The connection user `password`.
 	Password string `mapstructure:"password"`
+	// The connection `parameters`.
+	Parameters map[string]string `mapstructure:"parameters"`
 }
 
 // `ServiceConfig` specifies the configuration for an HTTP endpoint.

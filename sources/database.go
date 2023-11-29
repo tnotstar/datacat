@@ -21,9 +21,10 @@
 package sources
 
 import (
-	"fmt"
 	"log"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -69,11 +70,28 @@ func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source 
 		log.Fatalf("Can't get configuration of database '%s' for task '%s': %s", dbName, taskName, err)
 	}
 
+	hostname := dbConfig.Host
+	if dbConfig.Port > 0 {
+		hostname = net.JoinHostPort(hostname, strconv.Itoa(dbConfig.Port))
+	}
+
 	uri := &url.URL{
-		Scheme: dbConfig.Driver,
+		Scheme: dbConfig.Scheme,
 		User:   url.UserPassword(dbConfig.Username, dbConfig.Password),
-		Host:   fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port),
-		Path:   dbConfig.Database,
+		Host:   hostname,
+	}
+
+	if dbConfig.Service != "" {
+		uri.Path = url.PathEscape(dbConfig.Service)
+	}
+
+	params := dbConfig.Parameters
+	if len(params) > 0 {
+		query := uri.Query()
+		for key, value := range params {
+			query.Add(strings.TrimSpace(key), strings.TrimSpace(value))
+		}
+		uri.RawQuery = query.Encode()
 	}
 
 	return &DatabaseQuerySource{
