@@ -25,3 +25,8 @@ go.work
 # .env files
 .env*
 
+# data files
+*.json
+*.xml
+*.csv
+
