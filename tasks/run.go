@@ -25,37 +25,38 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tnotstar/sqltoapi/adapters"
-	"github.com/tnotstar/sqltoapi/core"
-	"github.com/tnotstar/sqltoapi/sources"
-	"github.com/tnotstar/sqltoapi/targets"
+	"github.com/tnotstar/datacat/adapters"
+	"github.com/tnotstar/datacat/core"
+	"github.com/tnotstar/datacat/sources"
+	"github.com/tnotstar/datacat/targets"
 )
 
 // ExecuteFetch executes the fetch task with given name.
 //
 // The `taskName` is the name of the task to be executed.
 func RunTask(taskName string) {
-	log.Printf("Running task '%s'...", taskName)
+	log.Printf("Running taskz '%s'...", taskName)
+	log.Print("RunTask: ************** HOOOOOLLLLLLLAAAAAA*********", taskName)
 	start := time.Now()
 	cfg := core.GetConfig()
 	var wg sync.WaitGroup
-	var prev, next <-chan core.RowMap
+	var pipe <-chan core.RowMap
 
 	log.Printf("> Starting source for task '%s'...", taskName)
-	source := sources.BuildSource(cfg, taskName)
-	next = source.Run(&wg)
-	prev = next
+	source := sources.BuildSource(0, cfg, taskName)
+	pipe = source.Run(&wg)
 
 	for _, adapterName := range cfg.GetAdapterNames(taskName) {
 		log.Printf("> Starting adapter '%s' for task '%s'...", adapterName, taskName)
-		adapter := adapters.BuildAdapter(cfg, taskName, adapterName)
-		next = adapter.Run(&wg, prev)
-		prev = next
+		adapter := adapters.BuildAdapter(0, cfg, taskName, adapterName)
+		pipe = adapter.Run(&wg, pipe)
 	}
 
-	log.Printf("> Starting target for task '%s'...", taskName)
-	target := targets.BuildTarget(cfg, taskName)
-	target.Run(&wg, prev)
+	for i := 0; i < 2; i++ {
+		log.Printf("> Starting instance #%d of target for task '%s'...", i, taskName)
+		target := targets.BuildTarget(i, cfg, taskName)
+		target.Run(&wg, pipe)
+	}
 
 	wg.Wait()
 	elapsed := time.Since(start)

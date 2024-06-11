@@ -22,7 +22,7 @@ package core
 
 import "sync"
 
-// A `Configurator` is an interface for the objects that provide the
+// `Configurator` is an interface for the objects that provide the
 // configuration for each element of the application.
 type Configurator interface {
 	// `GetDatabaseConfig` returns the configuration of the database

@@ -33,11 +33,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `NamesRandomizerAdapter` an adapter to randomize names.
 type NamesRandomizerAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -66,10 +68,11 @@ func IsaNamesRandomizerAdapter(adapterType string) bool {
 
 // `NewNamesRandomizerAdapter` creates a new instance of the NamesRandomizer adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewNamesRandomizerAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewNamesRandomizerAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
 	firstName := fmt.Sprint(adapterConfig.Arguments["firstname"])
@@ -92,6 +95,7 @@ func NewNamesRandomizerAdapter(cfg core.Configurator, taskName string, adapterNa
 	femaleData := getNamesData(femaleFilename)
 
 	return &NamesRandomizerAdapter{
+		id:         id,
 		task:       taskName,
 		adapter:    adapterName,
 		firstName:  firstName,
@@ -104,10 +108,12 @@ func NewNamesRandomizerAdapter(cfg core.Configurator, taskName string, adapterNa
 	}
 }
 
-// NamesRandomizer randomize names values.
+// Returns the output channel of the names randomized rows.
 //
-// Returns the output channel of the casted rows.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *NamesRandomizerAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+	log.Printf("* Creating #%d instance of names randomizer adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

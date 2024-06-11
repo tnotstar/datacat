@@ -27,12 +27,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 	"gopkg.in/yaml.v3"
 )
 
 // `ConstantMappingAdapter` an adapter to randomize names.
 type ConstantMappingAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -51,12 +53,13 @@ func IsaConstantMappingAdapter(adapterType string) bool {
 	return adapterType == "constant-mapping-adapter"
 }
 
-// `NewConstantMappingAdapter` creates a new instance of the ConstantMapping adapter.
+// `NewConstantMappingAdapter` creates a new instance of the constant mapping adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewConstantMappingAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewConstantMappingAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
 	raws := adapterConfig.Arguments["fields"].([]any)
@@ -73,6 +76,7 @@ func NewConstantMappingAdapter(cfg core.Configurator, taskName string, adapterNa
 	otherwise := fmt.Sprint(adapterConfig.Arguments["otherwise"])
 
 	return &ConstantMappingAdapter{
+		id:        id,
 		task:      taskName,
 		adapter:   adapterName,
 		fields:    fields,
@@ -81,10 +85,12 @@ func NewConstantMappingAdapter(cfg core.Configurator, taskName string, adapterNa
 	}
 }
 
-// ConstantMapping randomize names values.
+// Returns the output channel of the constant mapping rows.
 //
-// Returns the output channel of the casted rows.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *ConstantMappingAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+	log.Printf("* Creating #%d instance of constant mapping adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

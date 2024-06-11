@@ -29,7 +29,7 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
@@ -39,6 +39,8 @@ import (
 // for Oracle databases. It reads data from an Oracle database and sends
 // it to the output processing channel.
 type DatabaseQuerySource struct {
+	// The `id` of the source.
+	id int
 	// `task` is the name of the task which is running into.
 	task string
 	// `database` is the name of the database to be used.
@@ -59,9 +61,10 @@ func IsaDatabaseQuerySource(sourceType string) bool {
 
 // `NewDatabaseQuerySource` creates a new instance of the Database Source endpoint.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source {
+func NewDatabaseQuerySource(id int, cfg core.Configurator, taskName string) core.Source {
 	sourceConfig, _ := cfg.GetSourceConfig(taskName)
 
 	dbName := sourceConfig.Arguments["database"].(string)
@@ -95,6 +98,7 @@ func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source 
 	}
 
 	return &DatabaseQuerySource{
+		id:       id,
 		task:     taskName,
 		database: dbName,
 		driver:   dbConfig.Driver,
@@ -107,7 +111,7 @@ func NewDatabaseQuerySource(cfg core.Configurator, taskName string) core.Source 
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
 func (src *DatabaseQuerySource) Run(wg *sync.WaitGroup) <-chan core.RowMap {
-	log.Printf("* Creating DatabaseQuery source on database '%s'...", src.database)
+	log.Printf("* Creating instance #%d of database query source for task %s...", src.id, src.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

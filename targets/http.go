@@ -31,13 +31,15 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `HttpRequestTarget` is the concrete implementation of the target interface
 // for HTTP microservices endpoints. It reads data from a given
 // processing channel and send it to a given HTTP endpoint.
 type HttpRequestTarget struct {
+	// The `id` of the target.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The `url` to send data to.
@@ -66,7 +68,7 @@ func IsaHttpRequestTarget(sourceType string) bool {
 //
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func NewHttpRequestTarget(cfg core.Configurator, taskName string) *HttpRequestTarget {
+func NewHttpRequestTarget(id int, cfg core.Configurator, taskName string) *HttpRequestTarget {
 	targetConfig, _ := cfg.GetTargetConfig(taskName)
 
 	serviceName := targetConfig.Arguments["service"].(string)
@@ -89,6 +91,7 @@ func NewHttpRequestTarget(cfg core.Configurator, taskName string) *HttpRequestTa
 	}
 
 	return &HttpRequestTarget{
+		id:              id,
 		task:            taskName,
 		url:             targetURL,
 		method:          targetMethod,
@@ -104,7 +107,7 @@ func NewHttpRequestTarget(cfg core.Configurator, taskName string) *HttpRequestTa
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
 func (tgt *HttpRequestTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
-	log.Printf("Starting HttpTarget target for task %s...", tgt.task)
+	log.Printf("* Creating instance #%d of HTTP request target for task '%s'...", tgt.id, tgt.task)
 
 	log.Println("Requesting JWToken from the authz server...")
 	jwtoken := tgt.GetJWTokenFromAuthzServer()

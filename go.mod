@@ -1,4 +1,4 @@
-module github.com/tnotstar/sqltoapi
+module github.com/tnotstar/datacat
 
 go 1.20
 
@@ -9,6 +9,7 @@ require (
 	github.com/sijms/go-ora/v2 v2.8.7
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
+	github.com/tnotstar/sqltoapi v0.0.0-20240213104036-5408b11ab894
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 )
 
-// `ResolveFilename` resolves the `filename` to an absolute path with base `basepath`.
+// Resolves a filename to an absolute path from given basepath directory.
 func ResolveFilename(basepath string, filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename

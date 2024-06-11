@@ -22,7 +22,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/tnotstar/sqltoapi/tasks"
+	"github.com/tnotstar/datacat/tasks"
 )
 
 // `runCmd` represents the `run` command line handler.

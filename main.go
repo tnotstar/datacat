@@ -20,7 +20,9 @@
 
 package main
 
-import "github.com/tnotstar/sqltoapi/cmd"
+import (
+	"github.com/tnotstar/sqltoapi/cmd"
+)
 
 // `main` is the entry point of the application.
 func main() {

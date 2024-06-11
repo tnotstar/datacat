@@ -23,43 +23,46 @@ package adapters
 import (
 	"log"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `BuildAdapter` creates a new instance of the adapter middlepoint specified
 // by the configuration object passed as argument.
 //
+// The `id` is the identifier of the adapter instance.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the index of the adapter to be created.
-func BuildAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func BuildAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, err := cfg.GetAdapterConfig(taskName, adapterName)
 	if err != nil {
 		log.Fatalf("Error getting adapters configuration for task %s: %s", taskName, err)
 	}
+	log.Print("BuildAdapter: ************** HOOOOOLLLLLLLAAAAAA*********", adapterConfig)
 
 	if IsaCaseConversionAdapter(adapterConfig.Type) {
-		return NewCaseConversionAdapter(cfg, taskName, adapterName)
+		return NewCaseConversionAdapter(id, cfg, taskName, adapterName)
 	}
 
 	if IsaConstantMappingAdapter(adapterConfig.Type) {
-		return NewConstantMappingAdapter(cfg, taskName, adapterName)
+		return NewConstantMappingAdapter(id, cfg, taskName, adapterName)
 	}
 
 	if IsaCastToDatatypeAdapter(adapterConfig.Type) {
-		return NewCastToDatatypeAdapter(cfg, taskName, adapterName)
+		log.Print("IsaCastToDatatypeAdapter: ************** HOOOOOLLLLLLLAAAAAA*********", taskName, adapterName)
+		return NewCastToDatatypeAdapter(id, cfg, taskName, adapterName)
 	}
 
 	if IsaCryptoAESCBCZeroAdapter(adapterConfig.Type) {
-		return NewCryptoAESCBCZeroAdapter(cfg, taskName, adapterName)
+		return NewCryptoAESCBCZeroAdapter(id, cfg, taskName, adapterName)
 	}
 
 	if IsaNamesRandomizerAdapter(adapterConfig.Type) {
-		return NewNamesRandomizerAdapter(cfg, taskName, adapterName)
+		return NewNamesRandomizerAdapter(id, cfg, taskName, adapterName)
 	}
 
 	if IsaNullHandlingAdapter(adapterConfig.Type) {
-		return NewNullHandlingAdapter(cfg, taskName, adapterName)
+		return NewNullHandlingAdapter(id, cfg, taskName, adapterName)
 	}
 
 	log.Fatalf("Invalid adapter middlepoint type %s", adapterConfig.Type)

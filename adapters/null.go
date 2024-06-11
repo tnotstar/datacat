@@ -25,11 +25,13 @@ import (
 	"log"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `NullHandlingAdapter` an adapter to handle null values.
 type NullHandlingAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -46,27 +48,29 @@ func IsaNullHandlingAdapter(adapterType string) bool {
 
 // `NewNullHandlingAdapter` creates a new instance of the NullHandling adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewNullHandlingAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewNullHandlingAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
 	handling := fmt.Sprint(adapterConfig.Arguments["handling"])
 
 	return &NullHandlingAdapter{
+		id:       id,
 		task:     taskName,
 		adapter:  adapterName,
 		handling: handling,
 	}
 }
 
-// NullHandling handles null values.
+// Returns the output channel of the null handled rows.
 //
-// The `fields` is a list of fields to be handled.
-//
-// Returns the output channel of the casted rows.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *NullHandlingAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+	log.Printf("* Creating #%d instance of null handling adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

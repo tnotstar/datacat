@@ -29,11 +29,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `CastToDatatypeAdapter` casts the given fields to boolean values.
 type CastToDatatypeAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -56,22 +58,27 @@ func IsaCastToDatatypeAdapter(adapterType string) bool {
 
 // `NewCastToDatatypeAdapter` creates a new instance of the CastToDatatype adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewCastToDatatypeAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewCastToDatatypeAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
+	log.Print("NewCastToDatatypeAdapter: ************** HOOOOOLLLLLLLAAAAAA*********", adapterConfig)
 
 	raws := adapterConfig.Arguments["fields"].([]any)
+	log.Print("* Casting fields (raws): ", raws)
 	fields := make([]string, len(raws))
 	for i, field := range raws {
 		fields[i] = fmt.Sprint(field)
+		log.Print("* Casting field: ", fields[i])
 	}
 	datatype := fmt.Sprint(adapterConfig.Arguments["datatype"])
 	inLayout := fmt.Sprint(adapterConfig.Arguments["inlayout"])
 	outLayout := fmt.Sprint(adapterConfig.Arguments["outlayout"])
 
 	return &CastToDatatypeAdapter{
+		id:        id,
 		task:      taskName,
 		adapter:   adapterName,
 		fields:    fields,
@@ -81,12 +88,13 @@ func NewCastToDatatypeAdapter(cfg core.Configurator, taskName string, adapterNam
 	}
 }
 
-// CastToDatatype casts given row fields to boolean values.
-//
-// The `fields` is a list of fields to be casted.
-//
 // Returns the output channel of the casted rows.
+//
+// The `id` is the identifier of the goroutine.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *CastToDatatypeAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+	log.Printf("* Creating #%d instance of casting adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

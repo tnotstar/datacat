@@ -31,15 +31,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// `Config` represents the configuration data for the whole application.
+// Represents the configuration for the whole application.
 type Config struct {
-	// A map with all databases connection configuration.
+	// A map with all database configurations.
 	Databases map[string]DatabaseConfig `mapstructure:"databases"`
 
-	// A map with all http endpoints configuration.
+	// A map with all http-endpoint configurations.
 	Services map[string]ServiceConfig `mapstructure:"services"`
 
-	// An array with all task configurations
+	// A map with all task configurations.
 	Tasks map[string]struct {
 		// Specifies the configuration for the source endpoint.
 		Source SourceConfig `mapstructure:"source"`

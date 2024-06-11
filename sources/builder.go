@@ -23,26 +23,27 @@ package sources
 import (
 	"log"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `BuildSource` creates a new instance of the source endpoint specified
 // by the configuration object passed as argument.
 //
+// The `id` is the index of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func BuildSource(cfg core.Configurator, taskName string) core.Source {
+func BuildSource(id int, cfg core.Configurator, taskName string) core.Source {
 	sourceConfig, err := cfg.GetSourceConfig(taskName)
 	if err != nil {
 		log.Fatalf("Error getting source configuration for task %s: %s", taskName, err)
 	}
 
 	if IsaDatabaseQuerySource(sourceConfig.Type) {
-		return NewDatabaseQuerySource(cfg, taskName)
+		return NewDatabaseQuerySource(id, cfg, taskName)
 	}
 
 	if IsaJSONLFileSource(sourceConfig.Type) {
-		return NewJSONLFileSource(cfg, taskName)
+		return NewJSONLFileSource(id, cfg, taskName)
 	}
 
 	log.Fatalf("Invalid source endpoint type %s", sourceConfig.Type)

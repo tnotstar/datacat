@@ -23,26 +23,27 @@ package targets
 import (
 	"log"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `BuildTarget` creates a new instance of the target endpoint specified
 // by the configuration object passed as argument.
 //
+// The `id` is the index of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func BuildTarget(cfg core.Configurator, taskName string) core.Target {
+func BuildTarget(id int, cfg core.Configurator, taskName string) core.Target {
 	targetConfig, err := cfg.GetTargetConfig(taskName)
 	if err != nil {
 		log.Fatalf("Error getting source configuration for task %s: %s", taskName, err)
 	}
 
 	if IsaJSONLFileTarget(targetConfig.Type) {
-		return NewJSONLFileTarget(cfg, taskName)
+		return NewJSONLFileTarget(id, cfg, taskName)
 	}
 
 	if IsaHttpRequestTarget(targetConfig.Type) {
-		return NewHttpRequestTarget(cfg, taskName)
+		return NewHttpRequestTarget(id, cfg, taskName)
 	}
 
 	log.Fatalf("Invalid target endpoint type %s", targetConfig.Type)

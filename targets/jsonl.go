@@ -28,13 +28,15 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `JSONLinesTarget` is the concrete implementation of the target interface
 // for JSONLines (or NDJSON) file writer. It reads data from a given
 // processing channel and write it to a file in NDJSON format.
 type JSONLinesTarget struct {
+	// The `id` of the target.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The `fileName` of the file to be created.
@@ -53,13 +55,14 @@ func IsaJSONLFileTarget(sourceType string) bool {
 //
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
-func NewJSONLFileTarget(cfg core.Configurator, taskName string) *JSONLinesTarget {
+func NewJSONLFileTarget(id int, cfg core.Configurator, taskName string) *JSONLinesTarget {
 	targetConfig, _ := cfg.GetTargetConfig(taskName)
 
 	fileName := fmt.Sprint(targetConfig.Arguments["filename"])
 	batchSize, _ := strconv.Atoi(fmt.Sprint(targetConfig.Arguments["batchsize"]))
 
 	return &JSONLinesTarget{
+		id:        id,
 		task:      taskName,
 		fileName:  fileName,
 		batchSize: batchSize,
@@ -70,14 +73,13 @@ func NewJSONLFileTarget(cfg core.Configurator, taskName string) *JSONLinesTarget
 // it to an output channel. It returns a channel that will receive the
 // data read from the database.
 func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
-	log.Printf("* Creating JSONLines target with filename pattern '%s'...", tgt.fileName)
+	log.Printf("* Creating instance #%d of JSONLines file target for task '%s'...", tgt.id, tgt.task)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		batchNum := 0
-		fileName := fmt.Sprintf(tgt.fileName, batchNum)
+		fileName := fmt.Sprintf(tgt.fileName, tgt.id)
 		log.Printf(" - Creating JSONLines target file: '%s'...", fileName)
 
 		writer, err := os.Create(fileName)
@@ -100,31 +102,9 @@ func (tgt *JSONLinesTarget) Run(wg *sync.WaitGroup, in <-chan core.RowMap) {
 			}
 
 			counter++
-			if tgt.batchSize > 0 && counter%tgt.batchSize == 0 {
-				log.Printf(" - Written %d row(s) to the JSONLines target file: '%s'...", counter, fileName)
-				writer.Close()
-
-				batchNum += 1
-				fileName = fmt.Sprintf(tgt.fileName, batchNum)
-				log.Printf(" - Creating JSONLines target file: '%s'...", fileName)
-
-				writer, err = os.Create(fileName)
-				if err != nil {
-					log.Fatalf("Error creating file %s: %s", tgt.fileName, err.Error())
-				}
-
-			}
 		}
 
-		if tgt.batchSize > 0 && counter%tgt.batchSize == 0 {
-			log.Printf(" - Written %d row(s) to the JSONLines target file: '%s'...", counter, fileName)
-			writer.Close()
-
-			err := os.Remove(fileName)
-			if err != nil {
-				log.Fatalf("Error removing empty file %s: %s", tgt.fileName, err.Error())
-			}
-		}
+		log.Printf(" - Written %d row(s) to the JSONLines target file: '%s'...", counter, fileName)
 	}()
 
 	log.Printf("* JSONLines target with filename pattern '%s' started successfully!", tgt.fileName)

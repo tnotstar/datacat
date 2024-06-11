@@ -27,13 +27,15 @@ import (
 	"os"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `JSONLFileSource` is the concrete implementation of the source interface
 // for JSONLines (or NDJSON) file reader. It reads data from a given
 // file(s) in NDJSON format and send each row to the output processing channel.
 type JSONLFileSource struct {
+	// The `id` of the source.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The `fileName` of the file to be read.
@@ -46,12 +48,14 @@ func IsaJSONLFileSource(sourceType string) bool {
 
 // `NewJSONLFileSource` creates a new instance of the JSONLines source endpoint.
 //
+// The `id` is the instance of the adapter to be created.
 // The `task` is the name of the task to be executed.
 // The `filename` is the name of the file to be read.
-func NewJSONLFileSource(cfg core.Configurator, taskName string) *JSONLFileSource {
+func NewJSONLFileSource(id int, cfg core.Configurator, taskName string) *JSONLFileSource {
 	sourceConfig, _ := cfg.GetSourceConfig(taskName)
 
 	return &JSONLFileSource{
+		id:       id,
 		task:     taskName,
 		fileName: sourceConfig.Arguments["filename"].(string),
 	}

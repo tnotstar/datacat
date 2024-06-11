@@ -27,11 +27,13 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `CaseConversionAdapter` an adapter to handle null values.
 type CaseConversionAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -50,10 +52,11 @@ func IsaCaseConversionAdapter(adapterType string) bool {
 
 // `NewCaseConversionAdapter` creates a new instance of the CaseConversion adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewCaseConversionAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewCaseConversionAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
 	raws := adapterConfig.Arguments["fields"].([]any)
@@ -64,6 +67,7 @@ func NewCaseConversionAdapter(cfg core.Configurator, taskName string, adapterNam
 	handling := fmt.Sprint(adapterConfig.Arguments["handling"])
 
 	return &CaseConversionAdapter{
+		id:       id,
 		task:     taskName,
 		adapter:  adapterName,
 		fields:   fields,
@@ -71,12 +75,12 @@ func NewCaseConversionAdapter(cfg core.Configurator, taskName string, adapterNam
 	}
 }
 
-// CaseConversion handles null values.
+// Returns the output channel of the case converted rows.
 //
-// The `fields` is a list of fields to be handled.
-//
-// Returns the output channel of the casted rows.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *CaseConversionAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
+	log.Printf("* Creating #%d instance of case conversion adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)

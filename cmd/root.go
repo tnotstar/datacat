@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `cfgFile` is the configuration file path.
@@ -36,7 +36,7 @@ var taskName string
 
 // `rootCmd` represents the base command line handler.
 var rootCmd = &cobra.Command{
-	Use:   "sql2api",
+	Use:   "datacat",
 	Short: "A SQL data fetcher & API caller tool",
 	Long: `As a SQL fetcher it connects to given database and fetch
 its data to one or more local NDJSON file(s).
@@ -50,8 +50,8 @@ uploads its data to a given API server.`,
 
 // `init` initializes the `root` command line handler.
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config-file", "c", "sql2api.yaml",
-		"config file (default is `sql2api.yaml` at binary path)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config-file", "c", "datacat.yaml",
+		"config file (default is `datacat.yaml` at binary path)")
 
 	rootCmd.PersistentFlags().StringVarP(&taskName, "task-name", "t", "",
 		"the name of the task to be executed")

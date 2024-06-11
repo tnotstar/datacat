@@ -31,12 +31,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tnotstar/sqltoapi/core"
+	"github.com/tnotstar/datacat/core"
 )
 
 // `CryptoAESCBCZeroAdapter` apply a AES/CBC/ZeroPad block cipher
 // transformation to the given fields.
 type CryptoAESCBCZeroAdapter struct {
+	// The `id` of the adapter.
+	id int
 	// The `task` of the task which is running into.
 	task string
 	// The name of the `adapter`.
@@ -58,10 +60,11 @@ func IsaCryptoAESCBCZeroAdapter(sourceType string) bool {
 
 // `NewCryptoAESCBCZeroAdapter` creates a new instance of the CryptoAESCBCZero adapter.
 //
+// The `id` is the instance of the adapter to be created.
 // The `cfg` is the global configuration object.
 // The `taskName` is the name of the task to be executed.
 // The `adapterName` is the name of the adapter to be created.
-func NewCryptoAESCBCZeroAdapter(cfg core.Configurator, taskName string, adapterName string) core.Adapter {
+func NewCryptoAESCBCZeroAdapter(id int, cfg core.Configurator, taskName string, adapterName string) core.Adapter {
 	adapterConfig, _ := cfg.GetAdapterConfig(taskName, adapterName)
 
 	raws := adapterConfig.Arguments["fields"].([]any)
@@ -86,6 +89,7 @@ func NewCryptoAESCBCZeroAdapter(cfg core.Configurator, taskName string, adapterN
 	}
 
 	return &CryptoAESCBCZeroAdapter{
+		id:        id,
 		task:      taskName,
 		adapter:   adapterName,
 		fields:    fields,
@@ -95,11 +99,12 @@ func NewCryptoAESCBCZeroAdapter(cfg core.Configurator, taskName string, adapterN
 	}
 }
 
-// CryptoAESCBCZero apply AES/CBC/Zeropad to given row fields values.
+// Returns the output channel of the encrypted/decrypted rows.
 //
-// Returns the output channel of the casted rows.
+// The `wg` is the wait group for the goroutine.
+// The `in` is the input channel of the rows to be casted.
 func (adp *CryptoAESCBCZeroAdapter) Run(wg *sync.WaitGroup, in <-chan core.RowMap) <-chan core.RowMap {
-	log.Printf("* Creating CryptoAESCBCZero adapter for task %s...", adp.task)
+	log.Printf("* Creating #%d instance of CryptoAESCBCZero adapter for task %s...", adp.id, adp.task)
 	out := make(chan core.RowMap)
 
 	wg.Add(1)
